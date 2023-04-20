@@ -127,7 +127,7 @@ $header
             help="output an additional PDF files" />
         <param name="ruv_ncounts" type="boolean" truevalue="1" falsevalue="0" checked="false"
             label="Output RUVSeq normalized count tables"
-            help="If this option is set to Yes, the tool will generate RUVseq normalized count files. Default: No" />
+            help="CAREFUL RUVSeq normalized count tables are not to use for Statistical Analysis with DESeq2, edger or limma -- Only for Visualisation" />
     </inputs>
     <outputs>
         <collection name="unwanted_variation" type="list" label="RUVSeq covariate files on ${on_string}">
@@ -261,17 +261,17 @@ $header
             <param name="ruv_ncounts" value="true"/>
             <output name="plots" file="ruvseq_diag.pdf" ftype="pdf" compare="sim_size"/>
             <output_collection name="ruv_normcounts" type="list">
-                <element name="norm_counts_control_method_k1">
+                <element name="counts_control_method_k1">
                     <assert_contents>
                         <has_text_matching expression="geneID\tGSM461179_treat_single.counts\tGSM461180_treat_paired.counts\t.+"/>
                     </assert_contents>
                 </element>
-                <element name="norm_counts_replicate_method_k1">
+                <element name="counts_replicate_method_k1">
                     <assert_contents>
                         <has_text_matching expression="geneID\tGSM461179_treat_single.counts\tGSM461180_treat_paired.counts\t.+"/>
                     </assert_contents>
                 </element>
-                <element name="norm_counts_residual_method_k1">
+                <element name="counts_residual_method_k1">
                     <assert_contents>
                         <has_text_matching expression="geneID\tGSM461179_treat_single.counts\tGSM461180_treat_paired.counts\t.+"/>
                     </assert_contents>
@@ -297,17 +297,17 @@ $header
             <param name="ruv_ncounts" value="true"/>
             <output name="plots" file="ruvseq_diag_sailfish.pdf" ftype="pdf" compare="sim_size"/>
             <output_collection name="ruv_normcounts" type="list">
-                <element name="norm_counts_control_method_k1">
+                <element name="counts_control_method_k1">
                     <assert_contents>
                         <has_text_matching expression="geneID\tsailfish_quant.sf1.tab\tsailfish_quant.sf2.tab\t.+"/>
                     </assert_contents>
                 </element>
-                <element name="norm_counts_replicate_method_k1">
+                <element name="counts_replicate_method_k1">
                     <assert_contents>
                         <has_text_matching expression="geneID\tsailfish_quant.sf1.tab\tsailfish_quant.sf2.tab\t.+"/>
                     </assert_contents>
                 </element>
-                <element name="norm_counts_residual_method_k1">
+                <element name="counts_residual_method_k1">
                     <assert_contents>
                         <has_text_matching expression="geneID\tsailfish_quant.sf1.tab\tsailfish_quant.sf2.tab\t.+"/>
                     </assert_contents>
