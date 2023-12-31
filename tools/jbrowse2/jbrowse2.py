@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -179,38 +180,82 @@ class JbrowseConnector(object):
 
     def process_genomes(self):
         assemblies = []
+
         for i, genome_node in enumerate(self.genome_paths):
             # We only expect one input genome per run. This for loop is just
             # easier to write than the alternative / catches any possible
             # issues.
-            genome_name = genome_node["meta"].get(
-                "dataset_dname", "genome_%d" % (i + 1)
-            )
-            faname = genome_name + ".fa"
-            fa = os.path.realpath(os.path.join(self.outdir, faname))
-            shutil.copy(genome_node["path"], fa)
-            faind = fa + ".fai"
-            cmd = ["samtools", "faidx", fa, "--fai-idx", faind]
-            self.subprocess_check_call(cmd)
-            trackDict = {
-                "name": genome_name,
-                "sequence": {
-                    "type": "ReferenceSequenceTrack",
-                    "trackId": "%sReferenceSequenceTrack" % genome_name,
-                    "adapter": {
-                        "type": "IndexedFastaAdapter",
-                        "fastaLocation": {"uri": faname, "locationType": "UriLocation"},
-                        "faiLocation": {
-                            "uri": faname + ".fai",
-                            "locationType": "UriLocation",
+            path = genome_node.attrib['path']
+            if path == 'bgzipURL':  # special case testing urls for genomes
+                bg = genome_node.findall('metadata/bgzipURL')
+                fastaurl  = bg[0].attrib["fastaURL"]
+                faiurl = bg[0].attrib["faiURL"]
+                gziurl = bg[0].attrib["gziURL"]
+                if fastaurl and faiurl and gziurl:
+                    genome_name = fastaurl.split('/')[-1].split('.')[0]
+                    genome_path = fastaurl
+                    trackDict = {
+                        "name": genome_name,
+                        "sequence": {
+                            "type": "ReferenceSequenceTrack",
+                            "trackId": "%sReferenceSequenceTrack" % genome_name,
+                            "adapter": {
+                                "type": "BgzipFastaAdapter",
+                                "gziLocation": {
+                                    "uri": gziurl,
+                                    "locationType": "UriLocation",
+                                },
+                                "fastaLocation": {
+                                    "uri": fastaurl,
+                                    "locationType": "UriLocation",
+                                },
+                                "faiLocation": {
+                                    "uri": faiurl,
+                                    "locationType": "UriLocation",
+                                },
+                            },
+                        },
+                    }
+                else:
+                    log.warning(
+                        "Genome URL requested but not all needed components supplied"
+                    )
+                    sys.exit(11)
+            else:
+                path = os.path.realpath(genome_node.attrib['path'])
+                meta = metadata_from_node(genome_node.find('metadata'))
+                genome_name =meta.get(
+                    "dataset_dname", "genome_%d" % (i + 1)
+                )
+                faname = genome_name + ".fa"
+                fa = os.path.realpath(os.path.join(self.outdir, faname))
+                genome_path = fa
+                shutil.copy(path, fa)
+                faind = fa + ".fai"
+                cmd = ["samtools", "faidx", fa, "--fai-idx", faind]
+                self.subprocess_check_call(cmd)
+                trackDict = {
+                    "name": genome_name,
+                    "sequence": {
+                        "type": "ReferenceSequenceTrack",
+                        "trackId": "%sReferenceSequenceTrack" % genome_name,
+                        "adapter": {
+                            "type": "IndexedFastaAdapter",
+                            "fastaLocation": {
+                                "uri": faname,
+                                "locationType": "UriLocation",
+                            },
+                            "faiLocation": {
+                                "uri": faname + ".fai",
+                                "locationType": "UriLocation",
+                            },
                         },
                     },
-                },
-            }
+                }
             assemblies.append(trackDict)
         self.config_json["assemblies"] = assemblies
         self.genome_name = genome_name
-        self.genome_path = fa
+        self.genome_path = genome_path
 
     def add_default_view(self):
         cmd = [
@@ -237,6 +282,15 @@ class JbrowseConnector(object):
         Note: Both formats start with a MAF as input, and note that your MAF file should contain the species name and chromosome name
         e.g. hg38.chr1 in the sequence identifiers.
         need the reference id - eg hg18, for maf2bed.pl as the first parameter
+        for testing use https://s3.amazonaws.com/igv.broadinstitute.org/data/hic/intra_nofrag_30.hic
+        and type: 'BgzipFastaAdapter',
+        fastaLocation:
+        uri: 'https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz',
+        faiLocation:
+        uri: 'https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz.fai',
+        gziLocation:
+        uri: 'https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz.gzi',
+
         """
         tId = trackData["label"]
         url = "%s.hic" % tId
@@ -715,17 +769,11 @@ if __name__ == "__main__":
         # so we'll prepend `http://` and hope for the best. Requests *should*
         # be GET and not POST so it should redirect OK
         GALAXY_INFRASTRUCTURE_URL = "http://" + GALAXY_INFRASTRUCTURE_URL
-
+    genomes=root.findall('metadata/genomes/genome')
     jc = JbrowseConnector(
         jbrowse=args.jbrowse,
         outdir=args.outdir,
-        genomes=[
-            {
-                "path": os.path.realpath(x.attrib["path"]),
-                "meta": metadata_from_node(x.find("metadata")),
-            }
-            for x in root.findall("metadata/genomes/genome")
-        ],
+        genomes=genomes,
         standalone=args.standalone,
     )
     jc.process_genomes()

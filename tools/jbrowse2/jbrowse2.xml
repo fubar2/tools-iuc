@@ -65,10 +65,20 @@ python '$__tool_directory__/jbrowse2.py'
     <metadata>
         <genomes>
             #if str($reference_genome.genome_type_select) == "indexed":
-              <genome path="${reference_genome.genomes.fields.path}">
+              <genome path="${reference_genome.genome.fields.path}">
                   <metadata />
               </genome>
-            #else
+            #end if
+            #if str($reference_genome.genome_type_select) == "bgzipURL":
+              <genome path="bgzipURL">
+              <metadata>
+                    <bgzipURL fastaURL="${reference_genome.fastaLocation}"
+                    faiURL="${reference_genome.faiLocation}"
+                    gziURL="${reference_genome.gziLocation}" />
+               </metadata>
+              </genome>
+            #end if
+            #if  str($reference_genome.genome_type_select) == "history":
               <genome path="$reference_genome.genome">
                 <metadata>
                   <dataset id="${__app__.security.encode_id($reference_genome.genome.id)}" hid="${reference_genome.genome.hid}"
@@ -89,9 +99,9 @@ python '$__tool_directory__/jbrowse2.py'
                       #end if
                   <metadata
                       #for (key, value) in $reference_genome.genome.get_metadata().items():
-                      #if "_types" not in $key:
-                      ${key}="${value}"
-                      #end if
+                          #if "_types" not in $key:
+                            ${key}="${value}"
+                          #end if
                       #end for
                       />
                   <tool
@@ -187,12 +197,13 @@ python '$__tool_directory__/jbrowse2.py'
             <param help="Built-in references" label="Reference genome to display" name="genome_type_select" type="select">
                 <option selected="True" value="indexed">Use a built-in genome</option>
                 <option value="history">Use a genome from history</option>
+                <option value="bgzipURL">Server URL for bgzip data with fasta, fai and gzi</option>
             </param>
             <when value="indexed">
                 <param
                     help="If your genome of interest is not listed, contact the Galaxy team"
                     label="Select a reference genome"
-                    name="genomes"
+                    name="genome"
                     type="select">
                     <options from_data_table="all_fasta">
                         <filter column="2" type="sort_by" />
@@ -206,6 +217,24 @@ python '$__tool_directory__/jbrowse2.py'
                     label="Select the reference genome"
                     name="genome"
                     type="data" />
+            </when>
+            <when value="bgzipURL">
+                <param name="genome" type="hidden" value="bgzipURL"/>
+                <param
+                    label="URL to bgzipped fasta"
+                    name="fastaLocation"
+                    type="text"
+                    help = "Most reference data come as bgzip on remote servers - try https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz"/>
+                    <param
+                    label="URL to bgzipped fasta fai index"
+                    name="faiLocation"
+                    type="text"
+                    help = "fai URL - try https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz.fai"/>
+                    <param
+                    label="URL to bgzipped fasta"
+                    name="gziLocation"
+                    type="text"
+                    help = "gzi URL - try https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz.gzi"/>
             </when>
         </conditional>
 
