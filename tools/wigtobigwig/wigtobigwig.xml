@@ -57,39 +57,45 @@
                 <param name="unc" type="boolean" truevalue="-unc" falsevalue="" checked="False" label="Do not use compression" help="(unc)"/>
             </when>
         </conditional>
-    </inputs>
-    <outputs>
-        <data format="bigwig" name="out_file1" />
-    </outputs>
-    <tests>
-        <test>
-            <param name="input1" value="1.wig" dbkey="hg17" />
-            <param name="settingsType" value="full" />
-            <param name="blockSize" value="256" />
-            <param name="itemsPerSlot" value="1024" />
-            <param name="clip" value="True" />
-            <param name="unc" value="False" />
-            <output name="out_file1" file="1.bigwig"/>
-        </test>
-        <test>
-            <param name="input1" value="1.wig" dbkey="hg17" />
-            <param name="settingsType" value="preset" />
-            <output name="out_file1" file="1.bigwig"/>
-        </test>
-        <test>
-            <param name="input1" value="1.bedgraph" dbkey="hg17" ftype="bedgraph"/>
-            <param name="settingsType" value="preset" />
-            <output name="out_file1" file="3.bigwig" compare="sim_size"/>
-        </test>
-        <test>
-            <param name="input1" value="merlin.wig" ftype="bedgraph"/>
-            <param name="genome_type_select" value="history"/>
-            <param name="chromfile" value="merlin.len" ftype="len"/>
-            <param name="settingsType" value="preset" />
-            <output name="out_file1" file="merlin.bigwig" compare="sim_size"/>
-        </test>
-    </tests>
-    <help>
+        </inputs>
+        <outputs>
+                <data format="bigwig" name="out_file1" />
+        </outputs>
+        <tests>
+                <test>
+                        <param name="input1" value="1.wig"  />
+                        <param  name="genome_type_select" value="history"/>
+                        <param name="chromfile" value="hg17.len" ftype="len"/>
+                        <param name="settingsType" value="full" />
+                        <param name="blockSize" value="256" />
+                        <param name="itemsPerSlot" value="1024" />
+                        <param name="clip" value="True" />
+                        <param name="unc" value="False" />
+                        <output name="out_file1" file="1.bigwig"/>
+                </test>
+                <test>
+                        <param name="input1" value="1.wig"  />
+                        <param  name="genome_type_select" value="history"/>
+                        <param name="chromfile" value="hg17.len" ftype="len"/>
+                        <param name="settingsType" value="preset" />
+                        <output name="out_file1" file="1.bigwig"/>
+                </test>
+                <test>
+                        <param name="input1" value="1.bedgraph" ftype="bedgraph"/>
+                        <param  name="genome_type_select" value="history"/>
+                        <param name="chromfile" value="hg17.len" ftype="len"/>
+                        <param name="settingsType" value="preset" />
+                        <output name="out_file1" file="3.bigwig" compare="sim_size"/>
+                </test>
+                <test>
+                        <param name="input1" value="merlin.wig" ftype="bedgraph"/>
+                        <param  name="genome_type_select" value="history"/>
+                        <param name="chromfile" value="merlin.len" ftype="len"/>
+                        <param name="settingsType" value="preset" />
+                        <output name="out_file1" file="merlin.bigwig" compare="sim_size"/>
+                </test>
+        </tests>
+        <help>
 **Purpose**
 
 This tool converts bedgraph or wiggle data into bigWig data for visualisation in browsers. The JBrowse tool can display these with other interesting tracks.
