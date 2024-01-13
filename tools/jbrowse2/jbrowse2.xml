@@ -131,43 +131,74 @@ cp '$output.files_path/index.html' '$output'
 
             <options>
                 <style>
-                    <display>${track.data_format.jbstyle.track_style.display}</display>
-                    ## TODO change this to a for loop?
-                    #if 'show_labels' in $track.data_format.jbstyle.track_style
-                      <trackShowLabels type="boolean">${track.data_format.jbstyle.track_style.show_labels}</trackShowLabels>
-                    #end if
-                    #if 'show_descriptions' in $track.data_format.jbstyle.track_style
-                      <trackShowDescriptions type="boolean">${track.data_format.jbstyle.track_style.show_descriptions}</trackShowDescriptions>
-                    #end if
-                    #if 'display_mode' in $track.data_format.jbstyle.track_style
-                      <trackDisplayMode>${track.data_format.jbstyle.track_style.display_mode}</trackDisplayMode>
-                    #end if
-                    #if 'max_height' in $track.data_format.jbstyle.track_style
-                      <trackMaxHeight type="integer">${track.data_format.jbstyle.track_style.max_height}</trackMaxHeight>
-                    #end if
-                    #if 'autoscale' in $track.data_format.jbstyle.track_style
-                      <autoscale>${track.data_format.jbstyle.track_style.autoscale}</autoscale>
-                    #end if
-                    #if 'resolution' in $track.data_format.jbstyle.track_style
-                      <resolution type="integer">${track.data_format.jbstyle.track_style.resolution}</resolution>
-                    #end if
-                    #if 'summaryScoreMode' in $track.data_format.jbstyle.track_style
-                      <summaryScoreMode>${track.data_format.jbstyle.track_style.summaryScoreMode}</summaryScoreMode>
-                    #end if
-                    #if 'scaleType' in $track.data_format.jbstyle.track_style
-                      <scaleType>${track.data_format.jbstyle.track_style.scaleType}</scaleType>
-                    #end if
-                    #if 'filled' in $track.data_format.jbstyle.track_style
-                      <filled type="boolean">${track.data_format.jbstyle.track_style.filled}</filled>
-                    #end if
-                    #if 'displayCrossHatches' in $track.data_format.jbstyle.track_style
-                      <displayCrossHatches type="boolean">${track.data_format.jbstyle.track_style.displayCrossHatches}</displayCrossHatches>
-                    #end if
-                    #if 'minScore' in $track.data_format.jbstyle.track_style and $track.data_format.jbstyle.track_style.minScore
-                      <minScore type="integer">${track.data_format.jbstyle.track_style.minScore}</minScore>
-                    #end if
-                    #if 'maxScore' in $track.data_format.jbstyle.track_style and $track.data_format.jbstyle.track_style.maxScore
-                      <maxScore type="integer">${track.data_format.jbstyle.track_style.maxScore}</maxScore>
+                    #if str($track.data_format.data_format_select) == "wiggle":
+                        <type>${track.data_format.xyplot}</type>
+                        <variance_band>${track.data_format.var_band}</variance_band>
+                        #if str($track.data_format.scaling.scale_select) == "auto_local":
+                        <autoscale>local</autoscale>
+                        #else if str($track.data_format.scaling.scale_select) == "auto_global":
+                        <autoscale>global</autoscale>
+                        #else:
+                        <min>${track.data_format.scaling.minimum}</min>
+                        <max>${track.data_format.scaling.maximum}</max>
+                        #end if
+                        <scale>${track.data_format.scale_select2}</scale>
+                        ## Wiggle tracks need special color config
+                        #if str($track.data_format.jbcolor.color.color_select) != "automatic":
+                        <color_pos>${track.data_format.jbcolor.color.style_pos_color}</color_pos>
+                        <color_neg>${track.data_format.jbcolor.color.style_neg_color}</color_neg>
+                        #else:
+                        <color_pos>__auto__</color_pos>
+                        <color_neg>__auto__</color_neg>
+                        #end if
+
+                        ## Bicolor pivot config
+                        #if str($track.data_format.jbcolor.bicolor_pivot.bicolor_pivot_select) == "zero":
+                        <bicolor_pivot>zero</bicolor_pivot>
+                        #else if str($track.data_format.jbcolor.bicolor_pivot.bicolor_pivot_select) == "mean":
+                        <bicolor_pivot>mean</bicolor_pivot>
+                        #else:
+                        <bicolor_pivot>${track.data_format.jbcolor.bicolor_pivot.pivot_point}</bicolor_pivot>
+                        #end if
+                    #else:
+                        <display>${track.data_format.jbstyle.track_style.display}</display>
+                        ## TODO change this to a for loop?
+                        #if 'show_labels' in $track.data_format.jbstyle.track_style
+                          <trackShowLabels type="boolean">${track.data_format.jbstyle.track_style.show_labels}</trackShowLabels>
+                        #end if
+                        #if 'show_descriptions' in $track.data_format.jbstyle.track_style
+                          <trackShowDescriptions type="boolean">${track.data_format.jbstyle.track_style.show_descriptions}</trackShowDescriptions>
+                        #end if
+                        #if 'display_mode' in $track.data_format.jbstyle.track_style
+                          <trackDisplayMode>${track.data_format.jbstyle.track_style.display_mode}</trackDisplayMode>
+                        #end if
+                        #if 'max_height' in $track.data_format.jbstyle.track_style
+                          <trackMaxHeight type="integer">${track.data_format.jbstyle.track_style.max_height}</trackMaxHeight>
+                        #end if
+                        #if 'autoscale' in $track.data_format.jbstyle.track_style
+                          <autoscale>${track.data_format.jbstyle.track_style.autoscale}</autoscale>
+                        #end if
+                        #if 'resolution' in $track.data_format.jbstyle.track_style
+                          <resolution type="integer">${track.data_format.jbstyle.track_style.resolution}</resolution>
+                        #end if
+                        #if 'summaryScoreMode' in $track.data_format.jbstyle.track_style
+                          <summaryScoreMode>${track.data_format.jbstyle.track_style.summaryScoreMode}</summaryScoreMode>
+                        #end if
+                        #if 'scaleType' in $track.data_format.jbstyle.track_style
+                          <scaleType>${track.data_format.jbstyle.track_style.scaleType}</scaleType>
+                        #end if
+                        #if 'filled' in $track.data_format.jbstyle.track_style
+                          <filled type="boolean">${track.data_format.jbstyle.track_style.filled}</filled>
+                        #end if
+                        #if 'displayCrossHatches' in $track.data_format.jbstyle.track_style
+                          <displayCrossHatches type="boolean">${track.data_format.jbstyle.track_style.displayCrossHatches}</displayCrossHatches>
+                        #end if
+                        #if 'minScore' in $track.data_format.jbstyle.track_style and $track.data_format.jbstyle.track_style.minScore
+                          <minScore type="integer">${track.data_format.jbstyle.track_style.minScore}</minScore>
+                        #end if
+                        #if 'maxScore' in $track.data_format.jbstyle.track_style and $track.data_format.jbstyle.track_style.maxScore
+                          <maxScore type="integer">${track.data_format.jbstyle.track_style.maxScore}</maxScore>
+                        #end if
                     #end if
                     ## TODO other coloring/etc options in each renderer (e.g https://github.com/GMOD/jbrowse-components/blob/main/plugins/svg/src/SvgFeatureRenderer/configSchema.ts)
                 </style>
