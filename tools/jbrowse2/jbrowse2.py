@@ -17,6 +17,10 @@ from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("jbrowse")
+
+JB2VER = "v2.10.0"
+# version pinned for cloning
+
 TODAY = datetime.datetime.now().strftime("%Y-%m-%d")
 GALAXY_INFRASTRUCTURE_URL = None
 mapped_chars = {
@@ -368,7 +372,6 @@ def metadata_from_node(node):
 
 class JbrowseConnector(object):
     def __init__(self, outdir, genomes):
-        self.debug = False
         self.usejson = True
         self.giURL = GALAXY_INFRASTRUCTURE_URL
         self.outdir = outdir
@@ -384,16 +387,14 @@ class JbrowseConnector(object):
 
     def subprocess_check_call(self, command, output=None):
         if output:
-            if self.debug:
-                log.debug("cd %s && %s >  %s", self.outdir, " ".join(command), output)
+            log.debug("cd %s && %s >  %s", self.outdir, " ".join(command), output)
             subprocess.check_call(command, cwd=self.outdir, stdout=output)
         else:
             log.debug("cd %s && %s", self.outdir, " ".join(command))
             subprocess.check_call(command, cwd=self.outdir)
 
     def subprocess_popen(self, command):
-        if self.debug:
-            log.debug(command)
+        log.debug(command)
         p = subprocess.Popen(
             command,
             cwd=self.outdir,
@@ -411,8 +412,7 @@ class JbrowseConnector(object):
             raise RuntimeError("Command failed with exit code %s" % (retcode))
 
     def subprocess_check_output(self, command):
-        if self.debug:
-            log.debug(" ".join(command))
+        log.debug(" ".join(command))
         return subprocess.check_output(command, cwd=self.outdir)
 
     def symlink_or_copy(self, src, dest):
@@ -440,8 +440,6 @@ class JbrowseConnector(object):
     def process_genomes(self):
         assemblies = []
         for i, genome_node in enumerate(self.genome_paths):
-            if self.debug:
-                log.info("genome_node=%s" % str(genome_node))
             genome_name = genome_node["meta"]["dataset_dname"].strip()
             if len(genome_name.split()) > 1:
                 genome_name = genome_name.split()[0]
@@ -506,8 +504,6 @@ class JbrowseConnector(object):
             "-v",
             " LinearGenomeView",
         ]
-        if self.debug:
-            log.info("### calling set-default-session with cmd=%s" % "  ".join(cmd))
         self.subprocess_check_call(cmd)
 
     def write_config(self):
@@ -547,7 +543,6 @@ class JbrowseConnector(object):
             uri: 'https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/fasta/GRCh38.fa.gz.gzi',
         Cool will not be likely to be a good fit - see discussion at https://github.com/GMOD/jbrowse-components/issues/2438
         """
-        log.info("#### trackData=%s" % trackData)
         tId = trackData["label"]
         # can be served - if public.
         # dsId = trackData["metadata"]["dataset_id"]
@@ -576,8 +571,6 @@ class JbrowseConnector(object):
                 },
             ],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
@@ -599,8 +592,6 @@ class JbrowseConnector(object):
         tId = trackData["label"]
         fname = "%s.bed" % tId
         dest = "%s/%s" % (self.outdir, fname)
-        # self.symlink_or_copy(data, dest)
-        # Process MAF to bed-like. Need build to munge chromosomes
         gname = self.genome_name
         cmd = [
             "bash",
@@ -611,8 +602,6 @@ class JbrowseConnector(object):
             dest,
         ]
         self.subprocess_check_call(cmd)
-        if True or self.debug:
-            log.info("### convertMAF.sh called as %s" % " ".join(cmd))
         # Construct samples list
         # We could get this from galaxy metadata, not sure how easily.
         ps = subprocess.Popen(["grep", "^s [^ ]*", "-o", data], stdout=subprocess.PIPE)
@@ -622,8 +611,6 @@ class JbrowseConnector(object):
         soutp = outp.split("\n")
         samp = [x.split("s ")[1] for x in soutp if x.startswith("s ")]
         samples = [x.split(".")[0] for x in samp]
-        if self.debug:
-            log.info("### got samples = %s " % (samples))
         trackDict = {
             "type": "MafTrack",
             "trackId": tId,
@@ -642,8 +629,6 @@ class JbrowseConnector(object):
             },
             "assemblyNames": [self.genome_name],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
         if self.config_json.get("plugins", None):
@@ -741,8 +726,6 @@ class JbrowseConnector(object):
                 }
             ],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
@@ -752,7 +735,6 @@ class JbrowseConnector(object):
         dest = "%s/%s" % (self.outdir, fname)
         url = fname
         self.subprocess_check_call(["cp", data, dest])
-        log.info("### copied %s to %s" % (data, dest))
         bloc = {"uri": url}
         if bam_index is not None and os.path.exists(os.path.realpath(bam_index)):
             # bai most probably made by galaxy and stored in galaxy dirs, need to copy it to dest
@@ -789,8 +771,6 @@ class JbrowseConnector(object):
                 },
             ],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
@@ -837,8 +817,6 @@ class JbrowseConnector(object):
                 },
             ],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
@@ -890,8 +868,6 @@ class JbrowseConnector(object):
                 {"type": "LinearArcDisplay", "displayId": "%s-LinearArcDisplay" % tId},
             ],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
@@ -925,8 +901,6 @@ class JbrowseConnector(object):
                 {"type": "LinearArcDisplay", "displayId": "%s-LinearArcDisplay" % tId},
             ],
         }
-        # style_json = self._prepare_track_style(trackDict)
-        # trackDict["style"] = style_json
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
@@ -1045,12 +1019,7 @@ class JbrowseConnector(object):
             }
 
             outputTrackConfig["key"] = track_human_label
-            if self.debug:
-                log.info(
-                    "Processing category = %s, track_human_label = %s",
-                    category,
-                    track_human_label,
-                )
+
             # We add extra data to hash for the case of REST + SPARQL.
             if (
                 "conf" in track
@@ -1189,7 +1158,7 @@ class JbrowseConnector(object):
         elif self.genome_name is not None:
             refName = self.genome_name
             start = 0
-            end = 1000  # Booh, hard coded! waiting for https://github.com/GMOD/jbrowse-components/issues/2708
+            end = 10000 # Booh, hard coded! waiting for https://github.com/GMOD/jbrowse-components/issues/2708
 
         if refName is not None:
             # TODO displayedRegions is not just zooming to the region, it hides the rest of the chromosome
@@ -1255,8 +1224,11 @@ class JbrowseConnector(object):
 
     def clone_jbrowse(self):
         """Clone a JBrowse directory into a destination directory."""
+        #dest = os.path.realpath(self.outdir)
         dest = self.outdir
-        cmd = ["jbrowse", "create", "-f", dest]
+        cmd = ["rm", "-rf", dest + "/*"]
+        self.subprocess_check_call(cmd)
+        cmd = ["jbrowse", "create", dest, "-t", JB2VER, "-f"]
         self.subprocess_check_call(cmd)
         for fn in [
             "asset-manifest.json",
@@ -1268,7 +1240,7 @@ class JbrowseConnector(object):
         ]:
             cmd = ["rm", "-rf", os.path.join(self.outdir, fn)]
             self.subprocess_check_call(cmd)
-        cmd = ["cp", os.path.join(INSTALLED_TO, "servejb2.py"), self.outdir]
+        cmd = ["cp", os.path.join(INSTALLED_TO, "jb2_webserver.py"), self.outdir]
         self.subprocess_check_call(cmd)
 
 
@@ -1432,14 +1404,13 @@ if __name__ == "__main__":
         jc.add_general_configuration(general_data)
         print("## processed", str(track_conf), "trackIdlist", jc.trackIdlist)
     x = open(args.xml, "r").read()
-    log.info(
+    log.debug(
         "###done processing xml=%s; trackIdlist=%s, config=%s"
         % (x, jc.trackIdlist, str(jc.config_json))
     )
     jc.config_json["tracks"] = jc.tracksToAdd
     if jc.usejson:
         jc.write_config()
-    # jc.add_default_view()
     jc.add_default_session(default_session_data)
 
     # jc.text_index() not sure what broke here.
