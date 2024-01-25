@@ -33,7 +33,7 @@ cp '$output.files_path/index.html' '$output'
             #if str($reference_genome.genome_type_select) == "indexed":
               <genome path="${reference_genome.genomes.fields.path}" label="${reference_genome.genomes.fields.name}">
                   <metadata />
-              </genome>s
+              </genome>
             #else
               <genome path="$reference_genome.genome" label="${reference_genome.genome.element_identifier}">
                 <metadata>
