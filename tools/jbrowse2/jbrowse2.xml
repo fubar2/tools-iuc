@@ -297,12 +297,12 @@ cp '$output.files_path/index.html' '$output'
                     </when>
 
                     <when value="synteny">
-                        <param label="Other genome sequence"
+                        <param label="Comparison genome sequence" help="Paf must use this as the reference to map the real reference sequence"
                             format="fasta"
                             name="synteny_genome"
                             type="data" />
 
-                        <expand macro="input_conditional" label="Synteny data" format="paf" />
+                        <expand macro="input_conditional" label="Synteny data" format="paf" help="Make paf with minimap2 mapping real reference onto desired syntenic reference"/>
                         <expand macro="track_visibility" />
                     </when>
 

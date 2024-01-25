@@ -986,7 +986,11 @@ class JbrowseConnector(object):
                 # {
                     # "type": "LinearSyntenyDisplay",
                     # "displayId": "%s-LinearSyntenyDisplay" % tId,
-                # }
+                # },
+                # {
+                    # "type": "DotPlotDisplay",
+                    # "displayId": "%s-DotPlotDisplay" % tId,
+                # },
             # ],
         }
         style_json = self._prepare_track_style(trackDict)
@@ -1194,7 +1198,7 @@ class JbrowseConnector(object):
             ddl = data["defaultLocation"]
             loc_match = re.search(
                 r"^([^:]+):(\d+)\.+(\d+)$", ddl
-            )  # was re.search(r"^(\w.+):(\d+)\.+(\d+)$"
+            )
             if loc_match:
                 refName = loc_match.group(1)
                 start = int(loc_match.group(2))
