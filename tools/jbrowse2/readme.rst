@@ -6,6 +6,10 @@ JBrowse2 in Galaxy
 JBrowse2 is a fast, embeddable genome browser built completely with
 JavaScript and HTML5
 
+This version accepts bam, bed, bigwig, blastxml, cram, gff3, hic, maf, paf, vcf
+
+Cool will soon be added.
+
 Thus, it makes an ideal fit with Galaxy, especially for use as a
 workflow summary. E.g. annotate a genome, then visualise all of the
 associated datasets as an interactive HTML page. This tool MUST be whitelisted
