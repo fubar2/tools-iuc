@@ -1,8 +1,10 @@
 JBrowse2 in Galaxy
 ==================
 
-    JBrowse2 is a fast, embeddable genome browser built completely with
-    JavaScript and HTML5
+.. image:: jbrowse8.png
+
+JBrowse2 is a fast, embeddable genome browser built completely with
+JavaScript and HTML5
 
 Thus, it makes an ideal fit with Galaxy, especially for use as a
 workflow summary. E.g. annotate a genome, then visualise all of the
@@ -46,7 +48,8 @@ History
     - works well enough to be useful in workflows such as TreeValGal.
     - JB2 seems to set defaults wisely.
     - not yet ideal for users who need fine grained track control.
-    - synteny works.
+    - synteny (paf + reference) now working
+    - rehomed at https://github.com/usegalaxy-eu/temporary-tools/tree/master/jbrowse2 while IUC reviews are slowly sorted out.
 
 
 Wrapper License (MIT/BSD Style)

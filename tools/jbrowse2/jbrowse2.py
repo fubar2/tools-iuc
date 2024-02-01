@@ -3,7 +3,6 @@
 import argparse
 import binascii
 import datetime
-import hashlib
 import json
 import logging
 import os
@@ -23,7 +22,7 @@ JB2VER = "v2.10.1"
 
 TODAY = datetime.datetime.now().strftime("%Y-%m-%d")
 GALAXY_INFRASTRUCTURE_URL = None
-JB2REL = "v2.10.0"
+JB2REL = "v2.10.1"
 # version pinned for cloning
 
 mapped_chars = {
@@ -232,7 +231,9 @@ class ColorScaling(object):
         elif "scaling" in track:
             if track["scaling"]["method"] == "ignore":
                 if track["scaling"]["scheme"]["color"] != "__auto__":
-                    trackConfig["style"]["color"] = track["scaling"]["scheme"]["color"]
+                    trackConfig["style"]["color"] = track["scaling"]["scheme"][
+                        "color"
+                    ]
                 else:
                     trackConfig["style"]["color"] = self.hex_from_rgb(
                         *self._get_colours()
@@ -259,13 +260,18 @@ class ColorScaling(object):
                             "blue": blue,
                         }
                     )
-                    trackConfig["style"]["color"] = color_function.replace("\n", "")
+                    trackConfig["style"]["color"] = color_function.replace(
+                        "\n", ""
+                    )
                 elif trackFormat == "gene_calls":
                     # Default values, based on GFF3 spec
                     min_val = 0
                     max_val = 1000
                     # Get min/max and build a scoring function since JBrowse doesn't
-                    if scales["type"] == "automatic" or scales["type"] == "__auto__":
+                    if (
+                        scales["type"] == "automatic"
+                        or scales["type"] == "__auto__"
+                    ):
                         min_val, max_val = self.min_max_gff(gff3)
                     else:
                         min_val = scales.get("min", 0)
@@ -273,7 +279,9 @@ class ColorScaling(object):
 
                     if scheme["color"] == "__auto__":
                         user_color = "undefined"
-                        auto_color = "'%s'" % self.hex_from_rgb(*self._get_colours())
+                        auto_color = "'%s'" % self.hex_from_rgb(
+                            *self._get_colours()
+                        )
                     elif scheme["color"].startswith("#"):
                         user_color = "'%s'" % self.hex_from_rgb(
                             *self.rgb_from_hex(scheme["color"][1:])
@@ -281,7 +289,9 @@ class ColorScaling(object):
                         auto_color = "undefined"
                     else:
                         user_color = "undefined"
-                        auto_color = "'%s'" % self.hex_from_rgb(*self._get_colours())
+                        auto_color = "'%s'" % self.hex_from_rgb(
+                            *self._get_colours()
+                        )
 
                     color_function = self.COLOR_FUNCTION_TEMPLATE_QUAL.format(
                         **{
@@ -293,7 +303,9 @@ class ColorScaling(object):
                         }
                     )
 
-                    trackConfig["style"]["color"] = color_function.replace("\n", "")
+                    trackConfig["style"]["color"] = color_function.replace(
+                        "\n", ""
+                    )
         return trackConfig
 
 
@@ -336,40 +348,41 @@ def metadata_from_node(node):
     for (key, value) in node.findall("dataset")[0].attrib.items():
         metadata["dataset_%s" % key] = value
 
-    for (key, value) in node.findall("history")[0].attrib.items():
-        metadata["history_%s" % key] = value
+    if node.findall("history"):
+        for (key, value) in node.findall("history")[0].attrib.items():
+            metadata["history_%s" % key] = value
 
-    for (key, value) in node.findall("metadata")[0].attrib.items():
-        metadata["metadata_%s" % key] = value
-
-    for (key, value) in node.findall("tool")[0].attrib.items():
-        metadata["tool_%s" % key] = value
-
-    # Additional Mappings applied:
-    metadata[
-        "dataset_edam_format"
-    ] = '<a target="_blank" href="http://edamontology.org/{0}">{1}</a>'.format(
-        metadata["dataset_edam_format"], metadata["dataset_file_ext"]
-    )
-    metadata["history_user_email"] = '<a href="mailto:{0}">{0}</a>'.format(
-        metadata["history_user_email"]
-    )
-    metadata["hist_name"] = metadata["history_display_name"]
-    metadata[
-        "history_display_name"
-    ] = '<a target="_blank" href="{galaxy}/history/view/{encoded_hist_id}">{hist_name}</a>'.format(
-        galaxy=GALAXY_INFRASTRUCTURE_URL,
-        encoded_hist_id=metadata["history_id"],
-        hist_name=metadata["history_display_name"],
-    )
-    metadata[
-        "tool_tool"
-    ] = '<a target="_blank" href="{galaxy}/datasets/{encoded_id}/show_params">{tool_id}</a>'.format(
-        galaxy=GALAXY_INFRASTRUCTURE_URL,
-        encoded_id=metadata["dataset_id"],
-        tool_id=metadata["tool_tool_id"],
-        # tool_version=metadata['tool_tool_version'],
-    )
+    if node.findall("metadata"):
+        for (key, value) in node.findall("metadata")[0].attrib.items():
+            metadata["metadata_%s" % key] = value
+            # Additional Mappings applied:
+            metadata[
+                "dataset_edam_format"
+            ] = '<a target="_blank" href="http://edamontology.org/{0}">{1}</a>'.format(
+                metadata["dataset_edam_format"], metadata["dataset_file_ext"]
+            )
+            metadata["history_user_email"] = '<a href="mailto:{0}">{0}</a>'.format(
+                metadata["history_user_email"]
+            )
+            metadata["hist_name"] = metadata["history_display_name"]
+            metadata[
+                "history_display_name"
+            ] = '<a target="_blank" href="{galaxy}/history/view/{encoded_hist_id}">{hist_name}</a>'.format(
+                galaxy=GALAXY_INFRASTRUCTURE_URL,
+                encoded_hist_id=metadata["history_id"],
+                hist_name=metadata["history_display_name"],
+            )
+    if node.findall("tool"):
+        for (key, value) in node.findall("tool")[0].attrib.items():
+            metadata["tool_%s" % key] = value
+        metadata[
+            "tool_tool"
+        ] = '<a target="_blank" href="{galaxy}/datasets/{encoded_id}/show_params">{tool_id}{tool_version}</a>'.format(
+            galaxy=GALAXY_INFRASTRUCTURE_URL,
+            encoded_id=metadata.get("dataset_id", ""),
+            tool_id=metadata.get("tool_tool_id", ""),
+            tool_version=metadata.get("tool_tool_version",""),
+        )
     return metadata
 
 
@@ -389,7 +402,9 @@ class JbrowseConnector(object):
 
     def subprocess_check_call(self, command, output=None):
         if output:
-            log.debug("cd %s && %s >  %s", self.outdir, " ".join(command), output)
+            log.debug(
+                "cd %s && %s >  %s", self.outdir, " ".join(command), output
+            )
             subprocess.check_call(command, cwd=self.outdir, stdout=output)
         else:
             log.debug("cd %s && %s", self.outdir, " ".join(command))
@@ -458,19 +473,18 @@ class JbrowseConnector(object):
                 self.genome_name = (
                     genome_name  # first one for all tracks - other than paf
                 )
+                self.genome_firstcontig = None
+                fl = open(fapath, "r").readline().strip().split(">", 1)
+                if len(fl) > 1:
+                    self.genome_firstcontig = fl[1].strip()
         if self.config_json.get("assemblies", None):
             self.config_json["assemblies"] += assemblies
         else:
             self.config_json["assemblies"] = assemblies
 
     def make_assembly(self, fapath, gname):
-        hashData = [
-            fapath,
-            gname,
-        ]
-        hashData = "|".join(hashData).encode("utf-8")
-        ghash = hashlib.md5(hashData).hexdigest()
-        faname = ghash + ".fa.gz"
+
+        faname = gname + ".fa.gz"
         fadest = os.path.join(self.outdir, faname)
         cmd = "bgzip -i -c %s -I %s.gzi > %s && samtools faidx %s" % (
             fapath,
@@ -491,6 +505,7 @@ class JbrowseConnector(object):
                 "uri": faname + ".gzi",
             },
         }
+        self.genome_sequence_adapter = adapter
         trackDict = {
             "name": gname,
             "sequence": {
@@ -560,7 +575,7 @@ class JbrowseConnector(object):
         # can be served - if public.
         # dsId = trackData["metadata"]["dataset_id"]
         # url = "%s/api/datasets/%s/display?to_ext=hic " % (self.giURL, dsId)
-        hname = trackData["label"]
+        hname = trackData["name"]
         dest = os.path.join(self.outdir, hname)
         cmd = ["cp", data, dest]
         # these can be very big.
@@ -600,7 +615,7 @@ class JbrowseConnector(object):
             "plugins": [
                 {
                     "name": "MafViewer",
-                    "url": "https://unpkg.com/browse/jbrowse-plugin-mafviewer@1.0.6/dist/jbrowse-plugin-mafviewer.umd.production.min.js",
+                    "url": "https://unpkg.com/jbrowse-plugin-mafviewer/dist/jbrowse-plugin-mafviewer.umd.production.min.js"
                 }
             ]
         }
@@ -619,7 +634,9 @@ class JbrowseConnector(object):
         self.subprocess_check_call(cmd)
         # Construct samples list
         # We could get this from galaxy metadata, not sure how easily.
-        ps = subprocess.Popen(["grep", "^s [^ ]*", "-o", data], stdout=subprocess.PIPE)
+        ps = subprocess.Popen(
+            ["grep", "^s [^ ]*", "-o", data], stdout=subprocess.PIPE
+        )
         output = subprocess.check_output(("sort", "-u"), stdin=ps.stdout)
         ps.wait()
         outp = output.decode("ascii")
@@ -648,7 +665,10 @@ class JbrowseConnector(object):
                     "type": "LinearBasicDisplay",
                     "displayId": "%s-LinearBasicDisplay" % tId,
                 },
-                {"type": "LinearArcDisplay", "displayId": "%s-LinearArcDisplay" % tId},
+                {
+                    "type": "LinearArcDisplay",
+                    "displayId": "%s-LinearArcDisplay" % tId,
+                },
             ],
         }
         style_json = self._prepare_track_style(trackDict)
@@ -717,7 +737,10 @@ class JbrowseConnector(object):
                     "type": "LinearBasicDisplay",
                     "displayId": "%s-LinearBasicDisplay" % tId,
                 },
-                {"type": "LinearArcDisplay", "displayId": "%s-LinearArcDisplay" % tId},
+                {
+                    "type": "LinearArcDisplay",
+                    "displayId": "%s-LinearArcDisplay" % tId,
+                },
             ],
         }
         style_json = self._prepare_track_style(trackDict)
@@ -773,7 +796,9 @@ class JbrowseConnector(object):
         url = fname
         self.subprocess_check_call(["cp", data, dest])
         bloc = {"uri": url}
-        if bam_index is not None and os.path.exists(os.path.realpath(bam_index)):
+        if bam_index is not None and os.path.exists(
+            os.path.realpath(bam_index)
+        ):
             # bai most probably made by galaxy and stored in galaxy dirs, need to copy it to dest
             self.subprocess_check_call(
                 ["cp", os.path.realpath(bam_index), dest + ".bai"]
@@ -784,7 +809,9 @@ class JbrowseConnector(object):
             #      => no index generated by galaxy, but there might be one next to the symlink target
             #      this trick allows to skip the bam sorting made by galaxy if already done outside
             if os.path.exists(os.path.realpath(data) + ".bai"):
-                self.symlink_or_copy(os.path.realpath(data) + ".bai", dest + ".bai")
+                self.symlink_or_copy(
+                    os.path.realpath(data) + ".bai", dest + ".bai"
+                )
             else:
                 log.warn("Could not find a bam index (.bai file) for %s", data)
         trackDict = {
@@ -813,12 +840,62 @@ class JbrowseConnector(object):
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
+    def add_cram(self, data, trackData, cramOpts, cram_index=None, **kwargs):
+        tId = trackData["label"]
+        fname = "%s.cram" % trackData["label"]
+        dest = "%s/%s" % (self.outdir, fname)
+        url = fname
+        self.subprocess_check_call(["cp", data, dest])
+        bloc = {"uri": url}
+        if cram_index is not None and os.path.exists(
+            os.path.realpath(cram_index)
+        ):
+            # most probably made by galaxy and stored in galaxy dirs, need to copy it to dest
+            self.subprocess_check_call(
+                ["cp", os.path.realpath(cram_index), dest + ".crai"]
+            )
+        else:
+            # Can happen in exotic condition
+            # e.g. if bam imported as symlink with datatype=unsorted.bam, then datatype changed to bam
+            #      => no index generated by galaxy, but there might be one next to the symlink target
+            #      this trick allows to skip the bam sorting made by galaxy if already done outside
+            if os.path.exists(os.path.realpath(data) + ".crai"):
+                self.symlink_or_copy(
+                    os.path.realpath(data) + ".crai", dest + ".crai"
+                )
+            else:
+                log.warn(
+                    "Could not find a cram index (.crai file) for %s", data
+                )
+        trackDict = {
+            "type": "AlignmentsTrack",
+            "trackId": tId,
+            "name": trackData["name"],
+            "assemblyNames": [self.genome_name],
+            "adapter": {
+                "type": "CramAdapter",
+                "cramLocation": bloc,
+                "craiLocation": {"uri": fname + ".crai",},
+                "sequenceAdapter": self.genome_sequence_adapter,
+                },
+            "displays": [
+                {
+                    "type": "LinearAlignmentsDisplay",
+                    "displayId": "%s-LinearAlignmentsDisplay" % tId,
+                },
+            ],
+        }
+        style_json = self._prepare_track_style(trackDict)
+        trackDict["style"] = style_json
+        self.tracksToAdd.append(trackDict)
+        self.trackIdlist.append(tId)
+
     def add_vcf(self, data, trackData):
         tId = trackData["label"]
-        url = "%s/api/datasets/%s/display" % (
-            self.giURL,
-            trackData["metadata"]["dataset_id"],
-        )
+        # url = "%s/api/datasets/%s/display" % (
+        # self.giURL,
+        # trackData["metadata"]["dataset_id"],
+        # )
         url = "%s.vcf.gz" % tId
         dest = "%s/%s" % (self.outdir, url)
         cmd = "bgzip -c %s  > %s" % (data, dest)
@@ -869,7 +946,9 @@ class JbrowseConnector(object):
                 dest,
             )  # "gff3sort.pl --precise '%s' | grep -v \"^$\" > '%s'"
             self.subprocess_popen(cmd)
-            self.subprocess_check_call(["tabix", "-f", "-p", "gff", dest + ".gz"])
+            self.subprocess_check_call(
+                ["tabix", "-f", "-p", "gff", dest + ".gz"]
+            )
 
     def _sort_bed(self, data, dest):
         # Only index if not already done
@@ -906,7 +985,10 @@ class JbrowseConnector(object):
                     "type": "LinearBasicDisplay",
                     "displayId": "%s-LinearBasicDisplay" % tId,
                 },
-                {"type": "LinearArcDisplay", "displayId": "%s-LinearArcDisplay" % tId},
+                {
+                    "type": "LinearArcDisplay",
+                    "displayId": "%s-LinearArcDisplay" % tId,
+                },
             ],
         }
         style_json = self._prepare_track_style(trackDict)
@@ -945,7 +1027,10 @@ class JbrowseConnector(object):
                     "type": "LinearPileupDisplay",
                     "displayId": "%s-LinearPileupDisplay" % tId,
                 },
-                {"type": "LinearArcDisplay", "displayId": "%s-LinearArcDisplay" % tId},
+                {
+                    "type": "LinearArcDisplay",
+                    "displayId": "%s-LinearArcDisplay" % tId,
+                },
             ],
         }
         style_json = self._prepare_track_style(trackDict)
@@ -983,14 +1068,14 @@ class JbrowseConnector(object):
                 "assemblyNames": [self.genome_name, pgname],
             },
             # "displays": [
-                # {
-                    # "type": "LinearSyntenyDisplay",
-                    # "displayId": "%s-LinearSyntenyDisplay" % tId,
-                # },
-                # {
-                    # "type": "DotPlotDisplay",
-                    # "displayId": "%s-DotPlotDisplay" % tId,
-                # },
+            # {
+            # "type": "LinearSyntenyDisplay",
+            # "displayId": "%s-LinearSyntenyDisplay" % tId,
+            # },
+            # {
+            # "type": "DotPlotDisplay",
+            # "displayId": "%s-DotPlotDisplay" % tId,
+            # },
             # ],
         }
         style_json = self._prepare_track_style(trackDict)
@@ -1069,28 +1154,12 @@ class JbrowseConnector(object):
 
             outputTrackConfig["key"] = track_human_label
 
-            # We add extra data to hash for the case of REST + SPARQL.
-            if (
-                "conf" in track
-                and "options" in track["conf"]
-                and "url" in track["conf"]["options"]
-            ):
-                rest_url = track["conf"]["options"]["url"]
-            else:
-                rest_url = ""
             outputTrackConfig["trackset"] = track.get("trackset", {})
-            # I chose to use track['category'] instead of 'category' here. This
-            # is intentional. This way re-running the tool on a different date
-            # will not generate different hashes and make comparison of outputs
-            # much simpler.
-            hashData = [
-                str(dataset_path),
+            outputTrackConfig["label"] = "%s_%i_%s" % (
+                dataset_ext,
+                i,
                 track_human_label,
-                track["category"],
-                rest_url,
-            ]
-            hashData = "|".join(hashData).encode("utf-8")
-            outputTrackConfig["label"] = hashlib.md5(hashData).hexdigest() + "_%s" % i
+            )
             outputTrackConfig["metadata"] = extra_metadata
             outputTrackConfig["name"] = track_human_label
 
@@ -1122,17 +1191,10 @@ class JbrowseConnector(object):
                     outputTrackConfig,
                 )
             elif dataset_ext == "bam":
-                real_indexes = track["conf"]["options"]["pileup"]["bam_indices"][
-                    "bam_index"
-                ]
+                real_indexes = track["conf"]["options"]["pileup"][
+                    "bam_indices"
+                ]["bam_index"]
                 if not isinstance(real_indexes, list):
-                    # <bam_indices>
-                    #  <bam_index>/path/to/a.bam.bai</bam_index>
-                    # </bam_indices>
-                    #
-                    # The above will result in the 'bam_index' key containing a
-                    # string. If there are two or more indices, the container
-                    # becomes a list. Fun!
                     real_indexes = [real_indexes]
 
                 self.add_bam(
@@ -1141,15 +1203,32 @@ class JbrowseConnector(object):
                     track["conf"]["options"]["pileup"],
                     bam_index=real_indexes[i],
                 )
+            elif dataset_ext == "cram":
+                real_indexes = track["conf"]["options"]["cram"][
+                    "cram_indices"
+                ]["cram_index"]
+                if not isinstance(real_indexes, list):
+                    real_indexes = [real_indexes]
+
+                self.add_cram(
+                    dataset_path,
+                    outputTrackConfig,
+                    track["conf"]["options"]["cram"],
+                    cram_index=real_indexes[i],
+                )
             elif dataset_ext == "blastxml":
                 self.add_blastxml(
-                    dataset_path, outputTrackConfig, track["conf"]["options"]["blast"]
+                    dataset_path,
+                    outputTrackConfig,
+                    track["conf"]["options"]["blast"],
                 )
             elif dataset_ext == "vcf":
                 self.add_vcf(dataset_path, outputTrackConfig)
             elif dataset_ext == "paf":
                 self.add_paf(
-                    dataset_path, outputTrackConfig, track["conf"]["options"]["synteny"]
+                    dataset_path,
+                    outputTrackConfig,
+                    track["conf"]["options"]["synteny"],
                 )
             else:
                 log.warn("Do not know how to handle %s", dataset_ext)
@@ -1194,43 +1273,42 @@ class JbrowseConnector(object):
         view_json = {"type": "LinearGenomeView", "tracks": tracks_data}
 
         refName = None
+        drdict = {
+            "reversed": False,
+            "assemblyName": self.genome_name,
+            "start": 0,
+            "end": 100000,
+        }
+
         if data.get("defaultLocation", ""):
             ddl = data["defaultLocation"]
-            loc_match = re.search(
-                r"^([^:]+):(\d+)\.+(\d+)$", ddl
-            )
+            loc_match = re.search(r"^([^:]+):(\d*)\.*(\d*)$", ddl)
             if loc_match:
                 refName = loc_match.group(1)
-                start = int(loc_match.group(2))
-                end = int(loc_match.group(3))
+                drdict["refName"] = refName
+                if loc_match.group(2) > "":
+                    drdict["start"] = int(loc_match.group(2))
+                if loc_match.group(3) > "":
+                    drdict["end"] = int(loc_match.group(3))
             else:
                 logging.info(
                     "@@@ regexp could not match contig:start..end in the supplied location %s - please fix"
                     % ddl
                 )
-        elif self.genome_name is not None:
-            start = 0
-            end = 10000  # Booh, hard coded! waiting for https://github.com/GMOD/jbrowse-components/issues/2708
+        elif self.genome_firstcontig is not None:
+            drdict["refName"] = self.genome_firstcontig
             logging.info(
-                "@@@ no defaultlocation found for default session - please add one"
+                "@@@ no defaultlocation found for default session - using %s as first contig found"
+                % self.genome_firstcontig
             )
 
-        if refName is not None:
+        if drdict.get("refName", None):
             # TODO displayedRegions is not just zooming to the region, it hides the rest of the chromosome
             view_json["displayedRegions"] = [
-                {
-                    "refName": refName,
-                    "start": start,
-                    "end": end,
-                    "reversed": False,
-                    "assemblyName": self.genome_name,
-                }
+                drdict,
             ]
 
-            logging.info(
-                "@@@ defaultlocation %s for default session"
-                % view_json["displayedRegions"]
-            )
+            logging.info("@@@ defaultlocation %s for default session" % drdict)
         else:
             logging.info(
                 "@@@ no contig name found for default session - please add one!"
@@ -1271,14 +1349,18 @@ class JbrowseConnector(object):
             config_json.update(self.config_json)
         config_data = {}
 
-        config_data["disableAnalytics"] = data.get("analytics", "false") == "true"
+        config_data["disableAnalytics"] = (
+            data.get("analytics", "false") == "true"
+        )
 
         config_data["theme"] = {
             "palette": {
                 "primary": {"main": data.get("primary_color", "#0D233F")},
                 "secondary": {"main": data.get("secondary_color", "#721E63")},
                 "tertiary": {"main": data.get("tertiary_color", "#135560")},
-                "quaternary": {"main": data.get("quaternary_color", "#FFB11D")},
+                "quaternary": {
+                    "main": data.get("quaternary_color", "#FFB11D")
+                },
             },
             "typography": {"fontSize": int(data.get("font_size", 10))},
         }
@@ -1307,12 +1389,19 @@ class JbrowseConnector(object):
         ]:
             cmd = ["rm", "-rf", os.path.join(self.outdir, fn)]
             self.subprocess_check_call(cmd)
-        cmd = ["cp", os.path.join(INSTALLED_TO, "jb2_webserver.py"), self.outdir]
+        cmd = [
+            "cp",
+            os.path.join(INSTALLED_TO, "jb2_webserver.py"),
+            self.outdir,
+        ]
         self.subprocess_check_call(cmd)
 
 
 def parse_style_conf(item):
-    if "type" in item.attrib and item.attrib["type"] in ["boolean", "integer"]:
+    if "type" in item.attrib and item.attrib["type"] in [
+        "boolean",
+        "integer",
+    ]:
         if item.attrib["type"] == "boolean":
             return item.text in ("yes", "true", "True")
         elif item.attrib["type"] == "integer":
@@ -1325,9 +1414,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="", epilog="")
     parser.add_argument("--xml", help="Track Configuration")
     parser.add_argument("--outdir", help="Output directory", default="out")
-    parser.add_argument("--version", "-V", action="version", version="%(prog)s 2.0.1")
+    parser.add_argument(
+        "--version", "-V", action="version", version="%(prog)s 2.0.1"
+    )
     args = parser.parse_args()
-
     tree = ET.parse(args.xml)
     root = tree.getroot()
 
@@ -1379,7 +1469,10 @@ if __name__ == "__main__":
             for x in track.findall("files/trackFile"):
                 if is_multi_bigwig:
                     multi_bigwig_paths.append(
-                        (x.attrib["label"], os.path.realpath(x.attrib["path"]))
+                        (
+                            x.attrib["label"],
+                            os.path.realpath(x.attrib["path"]),
+                        )
                     )
                 else:
                     if trackfiles:
@@ -1419,7 +1512,8 @@ if __name__ == "__main__":
         track_conf["format"] = track.attrib["format"]
         if track.find("options/style"):
             track_conf["style"] = {
-                item.tag: parse_style_conf(item) for item in track.find("options/style")
+                item.tag: parse_style_conf(item)
+                for item in track.find("options/style")
             }
         if track.find("options/style_labels"):
             track_conf["style_labels"] = {
@@ -1432,7 +1526,9 @@ if __name__ == "__main__":
         track_conf["format"] = track.attrib["format"]
         try:
             # Only pertains to gff3 + blastxml. TODO?
-            track_conf["style"] = {t.tag: t.text for t in track.find("options/style")}
+            track_conf["style"] = {
+                t.tag: t.text for t in track.find("options/style")
+            }
         except TypeError:
             track_conf["style"] = {}
             pass
@@ -1463,7 +1559,9 @@ if __name__ == "__main__":
         "primary_color": root.find("metadata/general/primary_color").text,
         "secondary_color": root.find("metadata/general/secondary_color").text,
         "tertiary_color": root.find("metadata/general/tertiary_color").text,
-        "quaternary_color": root.find("metadata/general/quaternary_color").text,
+        "quaternary_color": root.find(
+            "metadata/general/quaternary_color"
+        ).text,
         "font_size": root.find("metadata/general/font_size").text,
     }
     jc.add_general_configuration(general_data)
