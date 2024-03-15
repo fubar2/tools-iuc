@@ -230,6 +230,9 @@
 
     -M                Max chunk. Stop adding sequence for a thread if more than MAX already. (50000)
 
+    mummerplot has been removed for technical reasons.
+    JBrowse is the recommended way to view bam or other pileups on your reference sequence
+
     ]]></help>
         <expand macro="citation" />
 </tool>
