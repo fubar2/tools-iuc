@@ -1,4 +1,4 @@
-/tmp/tmpc2brs3qy/files/6/4/a/dataset_64a5193b-2c86-4944-b9b2-57de4d931c91.dat /tmp/tmpc2brs3qy/files/4/0/3/dataset_40346e9e-472b-47a5-a06d-b658657af917.dat
+/tmp/tmpxwd3uala/files/9/7/e/dataset_97e3476e-536a-4a1a-9bd5-711b36e8a743.dat /tmp/tmpxwd3uala/files/f/7/b/dataset_f7ba477d-0771-43a8-a262-afea2c90b321.dat
 NUCMER
 >NG_007476.1:4960-11439 NC_000070.6:c41098183-41092724 6480 5460
 74 223 43 194 19 19 0
