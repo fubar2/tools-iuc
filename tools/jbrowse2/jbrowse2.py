@@ -341,23 +341,23 @@ def metadata_from_node(node):
     if node.findall("metadata"):
         for (key, value) in node.findall("metadata")[0].attrib.items():
             metadata["metadata_%s" % key] = value
-            # Additional Mappings applied:
-            metadata[
-                "dataset_edam_format"
-            ] = '<a target="_blank" href="http://edamontology.org/{0}">{1}</a>'.format(
-                metadata["dataset_edam_format"], metadata["dataset_file_ext"]
-            )
-            metadata["history_user_email"] = '<a href="mailto:{0}">{0}</a>'.format(
-                metadata["history_user_email"]
-            )
-            metadata["hist_name"] = metadata["history_display_name"]
-            metadata[
-                "history_display_name"
-            ] = '<a target="_blank" href="{galaxy}/history/view/{encoded_hist_id}">{hist_name}</a>'.format(
-                galaxy=GALAXY_INFRASTRUCTURE_URL,
-                encoded_hist_id=metadata["history_id"],
-                hist_name=metadata["history_display_name"],
-            )
+        # Additional Mappings applied:
+        metadata[
+            "dataset_edam_format"
+        ] = '<a target="_blank" href="http://edamontology.org/{0}">{1}</a>'.format(
+            metadata["dataset_edam_format"], metadata["dataset_file_ext"]
+        )
+        metadata["history_user_email"] = '<a href="mailto:{0}">{0}</a>'.format(
+            metadata["history_user_email"]
+        )
+        metadata["hist_name"] = metadata["history_display_name"]
+        metadata[
+            "history_display_name"
+        ] = '<a target="_blank" href="{galaxy}/history/view/{encoded_hist_id}">{hist_name}</a>'.format(
+            galaxy=GALAXY_INFRASTRUCTURE_URL,
+            encoded_hist_id=metadata.get("history_id", "not available"),
+            hist_name=metadata.get("history_display_name", "not available"),
+        )
     if node.findall("tool"):
         for (key, value) in node.findall("tool")[0].attrib.items():
             metadata["tool_%s" % key] = value
@@ -459,7 +459,7 @@ class JbrowseConnector(object):
         genome_names = []
         for i, genome_node in enumerate(genomes):
             this_genome = {}
-            if genome_node["useuri"].strip().lower() == "yes":
+            if genome_node["useuri"] == "yes":
                 useuri = True
             genome_name = genome_node["label"].strip()
             if len(genome_name.split()) > 1:
@@ -504,6 +504,7 @@ class JbrowseConnector(object):
             self.config_json["assemblies"] += assembly
         else:
             self.config_json["assemblies"] = assembly
+        self.genome_names += genome_names
         return this_genome["genome_name"]
 
     def make_assembly(self, fapath, gname, useuri):
@@ -673,7 +674,7 @@ class JbrowseConnector(object):
         categ = trackData["category"]
         fname = "%s" % tId
         dest = "%s/%s" % (self.outdir, fname)
-        gname = self.genome_name
+        gname = trackData["assemblyNames"]
 
         cmd = [
             "bash",
@@ -899,6 +900,12 @@ class JbrowseConnector(object):
         tId = trackData["label"]
         categ = trackData["category"]
         useuri = trackData["useuri"].lower() == "yes"
+        gsa = self.assmeta.get(trackData["assemblyNames"], None)
+        if gsa:
+            genseqad = gsa[0]["genome_sequence_adapter"]
+        else:
+            genseqad = "Not found"
+            logging.warn("No adapter found for cram %s in gsa=%s" % (tId, gsa))
         if useuri:
             url = data
         else:
@@ -931,7 +938,7 @@ class JbrowseConnector(object):
                 "craiLocation": {
                     "uri": url + ".crai",
                 },
-                "sequenceAdapter": self.genome_sequence_adapter,
+                "sequenceAdapter": genseqad,
             },
             "displays": [
                 {
@@ -1117,7 +1124,7 @@ class JbrowseConnector(object):
         categ = trackData["category"]
         pgnames = [x.strip() for x in pafOpts["genome_label"].split(",") if len(x.strip()) > 0]
         pgpaths = [x.strip() for x in pafOpts["genome"].split(",") if len(x.strip()) > 0]
-        passnames = [self.genome_name]  # always first
+        passnames = [trackData["assemblyNames"]]  # always first
         logging.debug("### add_paf got pafOpts=%s, pgnames=%s, pgpaths=%s for %s" % (pafOpts, pgnames, pgpaths, tId))
         for i, gname in enumerate(pgnames):
             if len(gname.split()) > 1:
@@ -1446,7 +1453,7 @@ if __name__ == "__main__":
         "--jbrowse2path", help="Path to JBrowse2 directory in biocontainer or Conda"
     )
     parser.add_argument("--outdir", help="Output directory", default="out")
-    parser.add_argument("--version", "-V", action="version", version="%(prog)s 2.0.1")
+    parser.add_argument("--version", "-V", action="version", version=JB2VER)
     args = parser.parse_args()
     tree = ET.parse(args.xml)
     root = tree.getroot()
@@ -1483,7 +1490,7 @@ if __name__ == "__main__":
                     }
                     for x in ass.findall("metadata/genomes/genome")
                 ]
-
+        logging.warn("#!!! genomes=%s" % genomes)
         assref_name = jc.process_genomes(genomes)
 
         for track in ass.find("tracks"):

@@ -1,4 +1,4 @@
- <tool id="jbrowse2" name="jbrowse2" version="@TOOL_VERSION@+@WRAPPER_VERSION@_7" profile="22.05">
+ <tool id="jbrowse2auto" name="JBrowse2auto" version="@TOOL_VERSION@+@WRAPPER_VERSION@_8" profile="22.05">
     <description>genome browser</description>
     <macros>
         <import>macros.xml</import>
@@ -104,7 +104,7 @@ export JBROWSE2_PATH=\$(dirname \$(which jbrowse))/../opt/jbrowse2  &&
                           hid="${assembly.reference_genome.genome.hid}"
                           size="${assembly.reference_genome.genome.get_size(nice_size=True)}"
                           edam_format="${assembly.reference_genome.genome.datatype.edam_format}"
-                          file_ext="${assemblies.reference_genome.genome.ext}"
+                          file_ext="${assembly.reference_genome.genome.ext}"
                           dname = "${assembly.reference_genome.genome.name}"
                           />
                       <history
@@ -290,17 +290,18 @@ export JBROWSE2_PATH=\$(dirname \$(which jbrowse))/../opt/jbrowse2  &&
 ]]></configfile>
     </configfiles>
     <inputs>
-        <repeat name="assemblies" min="1" title="Genome Assembly">
+        <repeat name="assemblies" min="1" title="Genome Assembly" help="When too many genomes are never enough">
         <conditional name="reference_genome">
-            <param help="Built-in references" label="Reference genome to display" name="genome_type_select" type="select">
+            <param help="Select a built in, history or remote tabix URI for the reference track"
+                 label="Reference genome source" name="genome_type_select" type="select">
                 <option selected="True" value="indexed">Use a built-in genome</option>
                 <option value="history">Use a genome from history</option>
-                <option value="uri">URI for a reference in tabix .gz format </option>
+                <option value="uri">URI for a reference as tabix with predictable index file URI</option>
             </param>
             <when value="indexed">
                 <param
-                    help="If your genome of interest is not listed, contact the Galaxy team"
-                    label="Select a reference genome"
+                    help="If not listed, add a custom genome, use a history genome or a remote URI tabix genome"
+                    label="Select a built in reference genome or custom genome"
                     name="genome"
                     type="select"
                     optional="true">
@@ -327,7 +328,7 @@ export JBROWSE2_PATH=\$(dirname \$(which jbrowse))/../opt/jbrowse2  &&
                     type="text">
                 </param>
                 <param
-                    label="Reference key - dbkey equivalent"
+                    label="Reference dbkey for tracks with this genome, such as hg38 or SacCer4"
                     name="refname"
                     type="text">
                 </param>
