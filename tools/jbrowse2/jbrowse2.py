@@ -38,20 +38,6 @@ mapped_chars = {
     "": "__cn__",
 }
 
-mapped_chars = {
-    ">": "__gt__",
-    "<": "__lt__",
-    "'": "__sq__",
-    '"': "__dq__",
-    "[": "__ob__",
-    "]": "__cb__",
-    "{": "__oc__",
-    "}": "__cc__",
-    "@": "__at__",
-    "#": "__pd__",
-    "": "__cn__",
-}
-
 
 class ColorScaling(object):
 
@@ -387,14 +373,14 @@ def metadata_from_node(node):
 
 
 class JbrowseConnector(object):
-    def __init__(self, outdir, jbrowse2path, genomes):
+    def __init__(self, outdir, jbrowse2path):
+        self.assemblies = [] # these require more than a few line diff.
+        self.assmeta = {}
         self.giURL = GALAXY_INFRASTRUCTURE_URL
         self.outdir = outdir
         self.genome_firstcontig = None
         self.jbrowse2path = jbrowse2path
         os.makedirs(self.outdir, exist_ok=True)
-        self.genome_paths = genomes
-        self.genome_name = None
         self.genome_names = []
         self.trackIdlist = []
         self.tracksToAdd = []
@@ -466,54 +452,59 @@ class JbrowseConnector(object):
         }
         return wstyle
 
-    def process_genomes(self):
-        assemblies = []
+    def process_genomes(self, genomes):
+        assembly = []
+        assmeta = []
         useuri = False
-        for i, genome_node in enumerate(self.genome_paths):
+        genome_names = []
+        for i, genome_node in enumerate(genomes):
+            this_genome = {}
             if genome_node["useuri"].strip().lower() == "yes":
                 useuri = True
-            genome_name = genome_node["meta"]["dataset_dname"].strip()
+            genome_name = genome_node["label"].strip()
             if len(genome_name.split()) > 1:
                 genome_name = genome_name.split()[0]
                 # spaces and cruft break scripts when substituted
-            if genome_name not in self.genome_names:
+            if genome_name not in genome_names:
                 # pafs with shared references
                 fapath = genome_node["path"]
                 if not useuri:
                     fapath = os.path.realpath(fapath)
                 assem = self.make_assembly(fapath, genome_name, useuri)
-                assemblies.append(assem)
-                self.genome_names.append(genome_name)
-                if self.genome_name is None:
-                    self.genome_name = (
+                assembly.append(assem)
+                if len(genome_names) == 0:
+                    this_genome["genome_name"] = (
                         genome_name  # first one for all tracks
                     )
-                    self.genome_sequence_adapter = assem["sequence"]["adapter"]
-                    self.genome_firstcontig = None
+                    genome_names.append(genome_name)
+                    this_genome["genome_sequence_adapter"] = assem["sequence"]["adapter"]
+                    this_genome["genome_firstcontig"] = None
                     if not useuri:
                         fl = open(fapath, "r").readline()
                         fls = fl.strip().split(">")
                         if len(fls) > 1:
                             fl = fls[1]
                             if len(fl.split()) > 1:
-                                self.genome_firstcontig = fl.split()[0].strip()
+                                this_genome["genome_firstcontig"] = fl.split()[0].strip()
                             else:
-                                self.genome_firstcontig = fl
+                                this_genome["genome_firstcontig"] = fl
                     else:
                         try:
                             fl = urllib.request.urlopen(fapath + ".fai").readline()
                         except:
                             fl = None
                         if fl:  # is first row of the text fai so the first contig name
-                            self.genome_firstcontig = (
+                            this_genome["genome_firstcontig"] = (
                                 fl.decode("utf8").strip().split()[0]
                             )
-                        else:
-                            self.genome_firstcontig = None
+                assmeta.append(this_genome)
+        self.assemblies += assembly
+        self.assmeta[genome_names[0]] = assmeta
         if self.config_json.get("assemblies", None):
-            self.config_json["assemblies"] += assemblies
+            self.config_json["assemblies"] += assembly
         else:
-            self.config_json["assemblies"] = assemblies
+            self.config_json["assemblies"] = assembly
+        return this_genome["genome_name"]
 
     def make_assembly(self, fapath, gname, useuri):
         if useuri:
@@ -651,7 +642,7 @@ class JbrowseConnector(object):
             "type": "HicTrack",
             "trackId": tId,
             "name":  trackData["name"],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "category": [
                 categ,
             ],
@@ -719,7 +710,7 @@ class JbrowseConnector(object):
                     },
                 },
             },
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "displays": [
                 {
                     "type": "LinearBasicDisplay",
@@ -780,7 +771,7 @@ class JbrowseConnector(object):
             "type": "FeatureTrack",
             "trackId": tId,
             "name": trackData["name"],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "category": [
                 categ,
             ],
@@ -832,9 +823,7 @@ class JbrowseConnector(object):
             "category": [
                 categ,
             ],
-            "assemblyNames": [
-                self.genome_name,
-            ],
+            "assemblyNames": [trackData["assemblyNames"]],
             "adapter": {
                 "type": "BigWigAdapter",
                 "bigWigLocation": bwloc,
@@ -884,7 +873,7 @@ class JbrowseConnector(object):
             "category": [
                 categ,
             ],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "adapter": {
                 "type": "BamAdapter",
                 "bamLocation": {"uri": url},
@@ -935,7 +924,7 @@ class JbrowseConnector(object):
             "category": [
                 categ,
             ],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "adapter": {
                 "type": "CramAdapter",
                 "cramLocation": {"uri": url},
@@ -977,7 +966,7 @@ class JbrowseConnector(object):
             "type": "VariantTrack",
             "trackId": tId,
             "name": trackData["name"],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "category": [
                 categ,
             ],
@@ -1042,7 +1031,7 @@ class JbrowseConnector(object):
             "type": "FeatureTrack",
             "trackId": tId,
             "name": trackData["name"],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "category": [
                 categ,
             ],
@@ -1087,7 +1076,7 @@ class JbrowseConnector(object):
             "type": "FeatureTrack",
             "trackId": tId,
             "name": trackData["name"],
-            "assemblyNames": [self.genome_name],
+            "assemblyNames": [trackData["assemblyNames"]],
             "adapter": {
                 "category": [
                     categ,
@@ -1176,8 +1165,7 @@ class JbrowseConnector(object):
         self.tracksToAdd.append(trackDict)
         self.trackIdlist.append(tId)
 
-    def process_annotations(self, track, parent):
-        _parent_genome = parent.attrib["label"]
+    def process_annotations(self, track):
         category = track["category"].replace("__pd__date__pd__", TODAY)
         for i, (
             dataset_path,
@@ -1196,6 +1184,7 @@ class JbrowseConnector(object):
                 "style": {},
             }
 
+            outputTrackConfig["assemblyNames"] = track["assemblyNames"]
             outputTrackConfig["key"] = track_human_label
             outputTrackConfig["useuri"] = useuri
             outputTrackConfig["path"] = dataset_path
@@ -1286,7 +1275,7 @@ class JbrowseConnector(object):
             else:
                 logging.warn("Do not know how to handle %s", dataset_ext)
             # Return non-human label for use in other fields
-            return outputTrackConfig["label"]
+            yield outputTrackConfig["label"]
 
     def add_default_session(self, default_data):
         """
@@ -1325,9 +1314,10 @@ class JbrowseConnector(object):
         # The view for the assembly we're adding
         view_json = {"type": "LinearGenomeView", "tracks": tracks_data}
         refName = None
+        assName = self.assemblies[0]["name"]
         drdict = {
             "reversed": False,
-            "assemblyName": self.genome_name,
+            "assemblyName": assName,
             "start": 1,
             "end": 100000,
             "refName": "x",
@@ -1350,7 +1340,7 @@ class JbrowseConnector(object):
                     % ddl
                 )
         else:
-            drdict["refName"] = self.genome_firstcontig
+            drdict["refName"] = assName
         if drdict.get("refName", None):
             # TODO displayedRegions is not just zooming to the region, it hides the rest of the chromosome
             view_json["displayedRegions"] = [
@@ -1471,113 +1461,121 @@ if __name__ == "__main__":
 
     jc = JbrowseConnector(
         outdir=args.outdir,
-        jbrowse2path=args.jbrowse2path,
-        genomes=[
-            {
-                "path": x.attrib["path"],
-                "label": x.attrib["label"],
-                "useuri": x.attrib["useuri"],
-                "meta": metadata_from_node(x.find("metadata")),
-            }
-            for x in root.findall("assembly/metadata/genomes/genome")
-        ],
+        jbrowse2path=args.jbrowse2path
     )
-    jc.process_genomes()
-
 
     default_session_data = {
-        "tracks_on": [],
+        "visibility": {
+            "default_on": [],
+            "default_off": [],
+        },
         "style": {},
         "style_labels": {},
     }
 
-    for track in root.findall("assembly/tracks/track"):
-        track_conf = {}
-        track_conf["trackfiles"] = []
+    for ass in root.findall("assembly"):
+        genomes=[
+                    {
+                        "path": x.attrib["path"],
+                        "label": x.attrib["label"],
+                        "useuri": x.attrib["useuri"],
+                        "meta": metadata_from_node(x.find("metadata")),
+                    }
+                    for x in ass.findall("metadata/genomes/genome")
+                ]
 
-        is_multi_bigwig = False
-        try:
-            if track.find("options/wiggle/multibigwig") and (
-                track.find("options/wiggle/multibigwig").text == "True"
-            ):
-                is_multi_bigwig = True
-                multi_bigwig_paths = []
-        except KeyError:
-            pass
+        assref_name = jc.process_genomes(genomes)
 
-        trackfiles = track.findall("files/trackFile")
-        if trackfiles:
-            for x in track.findall("files/trackFile"):
-                track_conf["label"] = x.attrib["label"]
-                trackkey = track_conf["label"]
-                track_conf["useuri"] = x.attrib["useuri"]
+        for track in ass.find("tracks"):
+            track_conf = {}
+            track_conf["trackfiles"] = []
+            track_conf["assemblyNames"] = assref_name
+            is_multi_bigwig = False
+            try:
+                if track.find("options/wiggle/multibigwig") and (
+                    track.find("options/wiggle/multibigwig").text == "True"
+                ):
+                    is_multi_bigwig = True
+                    multi_bigwig_paths = []
+            except KeyError:
+                pass
+
+            trackfiles = track.findall("files/trackFile")
+            if trackfiles:
+                for x in track.findall("files/trackFile"):
+                    track_conf["label"] = x.attrib["label"]
+                    trackkey = track_conf["label"]
+                    track_conf["useuri"] = x.attrib["useuri"]
+                    if is_multi_bigwig:
+                        multi_bigwig_paths.append(
+                            (
+                                x.attrib["label"],
+                                x.attrib["useuri"],
+                                os.path.realpath(x.attrib["path"]),
+                            )
+                        )
+                    else:
+                        if trackfiles:
+                            metadata = metadata_from_node(x.find("metadata"))
+                            track_conf["dataset_id"] = metadata.get("dataset_id","None")
+                            if x.attrib["useuri"].lower() == "yes":
+                                tfa = (
+                                    x.attrib["path"],
+                                    x.attrib["ext"],
+                                    x.attrib["useuri"],
+                                    x.attrib["label"],
+                                    metadata,
+                                )
+                            else:
+                                tfa = (
+                                    os.path.realpath(x.attrib["path"]),
+                                    x.attrib["ext"],
+                                    x.attrib["useuri"],
+                                    x.attrib["label"],
+                                    metadata,
+                                )
+                            track_conf["trackfiles"].append(tfa)
+
                 if is_multi_bigwig:
-                    multi_bigwig_paths.append(
+                    metadata = metadata_from_node(x.find("metadata"))
+
+                    track_conf["trackfiles"].append(
                         (
-                            x.attrib["label"],
-                            x.attrib["useuri"],
-                            os.path.realpath(x.attrib["path"]),
+                            multi_bigwig_paths,  # Passing an array of paths to represent as one track
+                            "bigwig_multiple",
+                            "MultiBigWig",  # Giving an hardcoded name for now
+                            {},  # No metadata for multiple bigwig
                         )
                     )
+
+            track_conf["category"] = track.attrib["cat"]
+            track_conf["format"] = track.attrib["format"]
+            track_conf["conf"] = etree_to_dict(track.find("options"))
+            track_conf["category"] = track.attrib["cat"]
+            track_conf["format"] = track.attrib["format"]
+            keys = jc.process_annotations(track_conf)
+
+            if keys:
+                for key in keys:
+                    vis = track.attrib.get("visibility", "default_off")
+                    if not vis:
+                        vis = "default_off"
+                    default_session_data["visibility"][
+                        vis
+                    ].append(key)
+                if track.find("options/style"):
+                    default_session_data["style"][key] = {
+                        item.tag: parse_style_conf(item) for item in track.find("options/style")
+                    }
                 else:
-                    if trackfiles:
-                        metadata = metadata_from_node(x.find("metadata"))
-                        track_conf["dataset_id"] = metadata["dataset_id"]
-                        if x.attrib["useuri"].lower() == "yes":
-                            tfa = (
-                                x.attrib["path"],
-                                x.attrib["ext"],
-                                x.attrib["useuri"],
-                                x.attrib["label"],
-                                metadata,
-                            )
-                        else:
-                            tfa = (
-                                os.path.realpath(x.attrib["path"]),
-                                x.attrib["ext"],
-                                x.attrib["useuri"],
-                                x.attrib["label"],
-                                metadata,
-                            )
-                        track_conf["trackfiles"].append(tfa)
+                    default_session_data["style"][key] = {}
+                    logging.warn("@@@@ no options/style found for %s" % (key))
 
-            if is_multi_bigwig:
-                metadata = metadata_from_node(x.find("metadata"))
-
-                track_conf["trackfiles"].append(
-                    (
-                        multi_bigwig_paths,  # Passing an array of paths to represent as one track
-                        "bigwig_multiple",
-                        "MultiBigWig",  # Giving an hardcoded name for now
-                        {},  # No metadata for multiple bigwig
-                    )
-                )
-
-        track_conf["category"] = track.attrib["cat"]
-        track_conf["format"] = track.attrib["format"]
-        track_conf["conf"] = etree_to_dict(track.find("options"))
-        track_conf["category"] = track.attrib["cat"]
-        track_conf["format"] = track.attrib["format"]
-        keys = jc.process_annotations(track_conf)
-
-        if keys:
-            for key in keys:
-                default_session_data["visibility"][
-                    track.attrib.get("visibility", "default_off")
-                ].append(key)
-            if track.find("options/style"):
-                default_session_data["style"][key] = {
-                    item.tag: parse_style_conf(item) for item in track.find("options/style")
-                }
-            else:
-                default_session_data["style"][key] = {}
-                logging.warn("@@@@ no options/style found for %s" % (key))
-
-            if track.find("options/style_labels"):
-                default_session_data["style_labels"][key] = {
-                    item.tag: parse_style_conf(item)
-                    for item in track.find("options/style_labels")
-                }
+                if track.find("options/style_labels"):
+                    default_session_data["style_labels"][key] = {
+                        item.tag: parse_style_conf(item)
+                        for item in track.find("options/style_labels")
+                    }
     default_session_data["defaultLocation"] = root.find(
         "metadata/general/defaultLocation"
     ).text
