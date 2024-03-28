@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <tool id="dada2_fetcher" name="dada2 data manager" tool_type="manage_data" version="0.1.0">
+    <description>Download reference databases</description>
     <requirements>
         <requirement type="package" version="3.7">python</requirement>
     </requirements>
