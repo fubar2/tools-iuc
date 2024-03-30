@@ -175,6 +175,8 @@ if __name__ == "__main__":
                             "gff3",
                             "vcf",
                             "maf",
+                            "bed",
+                            "hic"
                         ]:
                             default_session_data["visibility"]["default_on"].append(key)
                         else:
