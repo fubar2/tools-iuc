@@ -1426,7 +1426,7 @@ class JbrowseConnector(object):
         with open(config_path, "w") as config_file:
             json.dump(self.config_json, config_file, indent=2)
 
-    def clone_jbrowse(self, realclone=True):
+    def clone_jbrowse(self, realclone=False):
         """Clone a JBrowse directory into a destination directory. This also works in Biocontainer testing now
         Leave as True between version updates on temporary tools - requires manual conda trigger :(
         """
