@@ -907,7 +907,6 @@ class JbrowseConnector(object):
             else:
                 cpath = os.path.realpath(dest) + ".crai"
                 cmd = ["samtools", "index", "-c", "-o", cpath, os.path.realpath(dest)]
-                logging.debug("executing cmd %s" % " ".join(cmd))
                 self.subprocess_check_call(cmd)
         trackDict = {
             "type": "AlignmentsTrack",
@@ -1585,7 +1584,7 @@ if __name__ == "__main__":
                     }
                 else:
                     default_session_data["style"][key] = {}
-                    logging.debug("@@@@ no options/style found for %s" % (key))
+                    logging.debug("no options/style found for %s" % (key))
 
                 if track.find("options/style_labels"):
                     default_session_data["style_labels"][key] = {
@@ -1616,7 +1615,7 @@ if __name__ == "__main__":
     assconf = jc.config_json.get("assemblies", [])
     assconf += jc.assemblies
     jc.config_json["assemblies"] = assconf
-    logging.debug("&&&assemblies=%s, gnames=%s" % (assconf, jc.genome_names))
+    logging.debug("assemblies=%s, gnames=%s" % (assconf, jc.genome_names))
     jc.write_config()
     jc.add_default_session(default_session_data)
     # jc.text_index() not sure what broke here.
