@@ -1485,7 +1485,7 @@ class JbrowseConnector(object):
         """
         new_index = "Nothing written"
         session_spec = {"views": []}
-        logging.debug("def data=%s" % data)
+        logging.debug("def ass_first=%s\ndata=%s" % (self.ass_first_contigs, data))
         for first_contig in self.ass_first_contigs:
             gnome, refName, end = first_contig
             start = 0
