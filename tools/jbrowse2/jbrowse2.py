@@ -1203,7 +1203,7 @@ class JbrowseConnector(object):
                 },
             ],
         }
-        if nrow > 50000:
+        if nrow > 20000:
             style_json = {
                 "displays": [
                     {
