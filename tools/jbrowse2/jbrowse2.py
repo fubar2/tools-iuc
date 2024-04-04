@@ -856,7 +856,7 @@ class JbrowseConnector(object):
 
     def add_bam(self, data, trackData, bam_indexes=None, **kwargs):
         tId = trackData["label"]
-        realFName  = trackData["key"]
+        realFName = trackData["key"]
         useuri = trackData["useuri"].lower() == "yes"
         categ = trackData["category"]
         if useuri:
@@ -868,12 +868,19 @@ class JbrowseConnector(object):
             bindex = fname + ".bai"
             self.subprocess_check_call(["cp", data, dest])
             bi = bam_indexes.split()
-            bam_index = [x.split(',')[1].strip() for x in bi if ',' in x and x.split(',')[0].strip() == realFName]
+            bam_index = [
+                x.split(",")[1].strip()
+                for x in bi
+                if "," in x and x.split(",")[0].strip() == realFName
+            ]
             if len(bam_index) > 0:
                 bam_index = bam_index[0]
             else:
                 bam_index = None
-            logging.debug("===realFName=%s got %s as bi, %s for bam_index" % (realFName, bi, bam_index))
+            logging.debug(
+                "===realFName=%s got %s as bi, %s for bam_index"
+                % (realFName, bi, bam_index)
+            )
             if bam_index is not None and os.path.exists(bam_index):
                 if not os.path.exists(bindex):
                     # bai most probably made by galaxy and stored in galaxy dirs, need to copy it to dest
@@ -935,12 +942,19 @@ class JbrowseConnector(object):
             url = fname
             self.subprocess_check_call(["cp", data, dest])
             ci = cram_indexes.split()
-            cram_index = [x.split(',')[1].strip() for x in ci if ',' in x and x.split(',')[0] == realFName]
+            cram_index = [
+                x.split(",")[1].strip()
+                for x in ci
+                if "," in x and x.split(",")[0] == realFName
+            ]
             if len(cram_index) > 0:
                 cram_index = cram_index[0]
             else:
                 cram_index = None
-            logging.debug("=== for %s got %s as cram_indexes, %s for cram_index" % (realFName , cram_indexes, cram_index))
+            logging.debug(
+                "=== for %s got %s as cram_indexes, %s for cram_index"
+                % (realFName, cram_indexes, cram_index)
+            )
             if cram_index and os.path.exists(cram_index):
                 if not os.path.exists(dest + ".crai"):
                     # most probably made by galaxy and stored in galaxy dirs, need to copy it to dest
