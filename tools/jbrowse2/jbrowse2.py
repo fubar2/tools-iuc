@@ -21,7 +21,8 @@ log = logging.getLogger("jbrowse")
 
 JB2VER = "v2.10.3"
 # version pinned if cloning - but not cloning now
-
+logCommands = True
+# useful for seeing what's being written but not for production setups
 TODAY = datetime.datetime.now().strftime("%Y-%m-%d")
 SELF_LOCATION = os.path.dirname(os.path.realpath(__file__))
 GALAXY_INFRASTRUCTURE_URL = None
@@ -427,14 +428,19 @@ class JbrowseConnector(object):
 
     def subprocess_check_call(self, command, output=None, cwd=True):
         if output:
-            #log.debug("cd %s && %s >  %s", self.get_cwd(cwd), " ".join(command), output)
+            if logCommands:
+                log.debug(
+                    "cd %s && %s >  %s", self.get_cwd(cwd), " ".join(command), output
+                )
             subprocess.check_call(command, cwd=self.get_cwd(cwd), stdout=output)
         else:
-            #log.debug("cd %s && %s", self.get_cwd(cwd), " ".join(command))
+            if logCommands:
+                log.debug("cd %s && %s", self.get_cwd(cwd), " ".join(command))
             subprocess.check_call(command, cwd=self.get_cwd(cwd))
 
     def subprocess_popen(self, command, cwd=True):
-        #log.debug(command)
+        if logCommands:
+            log.debug(command)
         p = subprocess.Popen(
             command,
             cwd=self.get_cwd(cwd),
@@ -452,7 +458,8 @@ class JbrowseConnector(object):
             raise RuntimeError("Command failed with exit code %s" % (retcode))
 
     def subprocess_check_output(self, command):
-        #log.debug(" ".join(command))
+        if logCommands:
+            log.debug(" ".join(command))
         return subprocess.check_output(command, cwd=self.outdir)
 
     def symlink_or_copy(self, src, dest):
@@ -491,7 +498,7 @@ class JbrowseConnector(object):
                 nrow = len(fl)
             except Exception:
                 nrow = 0
-        logging.debug("### getNrow returning %d" % nrow)
+        logging.debug("### getNrow %s returning %d" % (url, nrow))
         return nrow
 
     def process_genomes(self, genomes):
@@ -511,17 +518,15 @@ class JbrowseConnector(object):
                 # spaces and cruft break scripts when substituted
             if not primaryGenome:
                 primaryGenome = genome_name
-            if genome_name not in self.genome_names:      
+            if genome_name not in self.genome_names:
                 self.genome_names.append(genome_name)
-                logging.debug("---------added %s to self.genome_names %s" % (genome_name, self.genome_names))          
-                # pafs with shared references
                 fapath = genome_node["path"]
                 if not useuri:
                     fapath = os.path.realpath(fapath)
                 assem, first_contig = self.make_assembly(fapath, genome_name, useuri)
                 assembly.append(assem)
                 self.ass_first_contigs.append(first_contig)
-                if genome_name == primaryGenome: # first one
+                if genome_name == primaryGenome:  # first one
                     this_genome["genome_name"] = genome_name  # first one for all tracks
                     this_genome["genome_sequence_adapter"] = assem["sequence"][
                         "adapter"
@@ -745,10 +750,11 @@ class JbrowseConnector(object):
         sampu = list(dict.fromkeys(samp))
         samples = [x.split(".")[0] for x in sampu]
         samples.sort()
-        logging.debug(
-            "$$$$ cmd=%s, mafss=%s samp=%s samples=%s"
-            % (" ".join(cmd), mafss, samp, samples)
-        )
+        if logCommands:
+            logging.debug(
+                "$$$$ cmd=%s, mafss=%s samp=%s samples=%s"
+                % (" ".join(cmd), mafss, samp, samples)
+            )
         trackDict = {
             "type": "MafTrack",
             "trackId": tId,
@@ -1192,7 +1198,7 @@ class JbrowseConnector(object):
             if gname not in self.genome_names:
                 # ignore if already there - eg for duplicates among pafs.
                 asstrack, first_contig = self.make_assembly(gpath, gname, useuri)
-                self.genome_names.append(gname) 
+                self.genome_names.append(gname)
                 self.tracksToAdd[gname] = []
                 self.assemblies.append(asstrack)
                 self.ass_first_contigs.append(first_contig)
@@ -1267,11 +1273,14 @@ class JbrowseConnector(object):
             outputTrackConfig["ext"] = dataset_ext
 
             outputTrackConfig["trackset"] = track.get("trackset", {})
-            outputTrackConfig["label"] = track["label"]            
+            outputTrackConfig["label"] = track["label"]
             outputTrackConfig["metadata"] = extra_metadata
             outputTrackConfig["name"] = track_human_label
             if track["label"] in self.trackIdlist:
-                logging.error("### not adding %s already in %s" % (track["label"], self.trackIdlist))
+                logging.error(
+                    "### not adding %s already in %s"
+                    % (track["label"], self.trackIdlist)
+                )
                 yield None
             if dataset_ext in ("gff", "gff3"):
                 self.add_gff(
@@ -1409,9 +1418,6 @@ class JbrowseConnector(object):
                 "minimized": False,
                 "tracks": tracks_data,
             }
-            logging.debug(
-                "Looking for %s in self.ass_ %s" % (gnome, self.ass_first_contigs)
-            )
             first = [x for x in self.ass_first_contigs if x[0] == gnome]
             if len(first) > 0:
                 [gnome, refName, end] = first[0]
@@ -1470,6 +1476,8 @@ class JbrowseConnector(object):
 
     def add_defsess_to_index(self, data):
         """
+        PROBABLY NOW BROKEN by changes since this was deprecated temporarily as at April 18
+
         Included on request of the new codeowner, from Anthony's IUC PR.
         Had to be fixed to keep each assembly with the associated tracks for a default view.
         Originally used only the first assembly, putting all tracks there and so breaking some
@@ -1727,7 +1735,6 @@ if __name__ == "__main__":
                         }
                         stile.update(supdate)
                     default_session_data[primaryGenome]["style"][key] = stile
-                    logging.debug("@@@ for %s got style=%s" % (key, stile))
                     if track.find("options/style_labels"):
                         default_session_data[primaryGenome]["style_labels"][key] = {
                             item.tag: parse_style_conf(item)
@@ -1755,14 +1762,26 @@ if __name__ == "__main__":
     for gnome in jc.genome_names:
         gtracks = jc.tracksToAdd[gnome]
         if len(gtracks) > 0:
-            logging.debug("for gnome %s adding gtracks %s" %(gnome, json.dumps(gtracks, indent=2)))
+            logging.debug(
+                "for genome %s adding gtracks %s"
+                % (gnome, json.dumps(gtracks, indent=2))
+            )
             trackconf += gtracks
     jc.config_json["tracks"] = trackconf
     assconf = jc.config_json.get("assemblies", [])
     assconf += jc.assemblies
     jc.config_json["assemblies"] = assconf
-    logging.debug("assmeta=%s, first_contigs=%s, assemblies=%s, gnames=%s, trackidlist=%s, tracks=%s" % (jc.assmeta, 
-      jc.ass_first_contigs, json.dumps(assconf, indent=2), jc.genome_names, jc.trackIdlist, json.dumps(trackconf, indent=2)))
+    logging.debug(
+        "assmeta=%s, first_contigs=%s, assemblies=%s, gnames=%s, trackidlist=%s, tracks=%s"
+        % (
+            jc.assmeta,
+            jc.ass_first_contigs,
+            json.dumps(assconf, indent=2),
+            jc.genome_names,
+            jc.trackIdlist,
+            json.dumps(trackconf, indent=2),
+        )
+    )
     jc.write_config()
     jc.add_default_session(default_session_data)
     # note that this can be left in the config.json but has NO EFFECT if add_defsess_to_index is called.
