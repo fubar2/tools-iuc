@@ -1,5 +1,16 @@
 JBrowse2 in Galaxy
 ==================
+
+
+Added April 2024:
+Multiple independent assembly/track sets in the same browser now working
+Tests are now far more convincing using the zip outputs to check for files
+Automated collection generation is really cool - TODO: need visibility for each track
+maf and blastxml are working for test files at least - not yet properly tested.
+cool/mcool are converted to hic 
+vcf, cram, bam, bed, gff, bigwig, hic, cool, blastxml, maf, paf tracks.
+
+
 Added Mar 26:
 Testing history added with tests of the 8 simple formats
 hic and paf need small tests but work with big ones...

@@ -22,7 +22,7 @@ log = logging.getLogger("jbrowse")
 JB2VER = "v2.11.0"
 # version pinned if cloning - but not cloning now
 logCommands = True
-# useful for seeing what's being written but not for production setups
+# useful for seeing what's being written but NOT for production setups
 TODAY = datetime.datetime.now().strftime("%Y-%m-%d")
 SELF_LOCATION = os.path.dirname(os.path.realpath(__file__))
 GALAXY_INFRASTRUCTURE_URL = None
@@ -39,32 +39,6 @@ mapped_chars = {
     "#": "__pd__",
     "": "__cn__",
 }
-
-
-INDEX_TEMPLATE = """<!doctype html>
-<html lang="en" style="height:100%">
-<head>
-<meta charset="utf-8"/>
-<link rel="shortcut icon" href="./favicon.ico"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="theme-color" content="#000000"/>
-<meta name="description" content="A fast and flexible genome browser"/>
-<link rel="manifest" href="./manifest.json"/>
-<title>JBrowse</title>
-</script>
-</head>
-<body style="overscroll-behavior:none; height:100%; margin: 0;">
-<iframe
-  id="jbframe"
-  title="JBrowse2"
-  frameborder="0"
-  width="100%"
-  height="100%"
-  src='index_noview.html?config=config.json__SESSION_SPEC__'>
-</iframe>
-</body>
-</html>
-"""
 
 
 class ColorScaling(object):
@@ -1461,6 +1435,33 @@ class JbrowseConnector(object):
         https://github.com/GMOD/jbrowse-components/discussions/3568
         https://github.com/GMOD/jbrowse-components/pull/4148
         """
+
+
+        INDEX_TEMPLATE = """<!doctype html>
+        <html lang="en" style="height:100%">
+        <head>
+        <meta charset="utf-8"/>
+        <link rel="shortcut icon" href="./favicon.ico"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <meta name="theme-color" content="#000000"/>
+        <meta name="description" content="A fast and flexible genome browser"/>
+        <link rel="manifest" href="./manifest.json"/>
+        <title>JBrowse</title>
+        </script>
+        </head>
+        <body style="overscroll-behavior:none; height:100%; margin: 0;">
+        <iframe
+        id="jbframe"
+        title="JBrowse2"
+        frameborder="0"
+        width="100%"
+        height="100%"
+        src='index_noview.html?config=config.json__SESSION_SPEC__'>
+        </iframe>
+        </body>
+        </html>
+        """
+
         new_index = "Nothing written"
         session_spec = {"views": []}
         logging.debug("def ass_first=%s\ndata=%s" % (self.ass_first_contigs, data))

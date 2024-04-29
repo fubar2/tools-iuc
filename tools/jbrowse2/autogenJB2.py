@@ -77,7 +77,7 @@ if __name__ == "__main__":
                     for i, x in enumerate(genome_paths)
                 ],
             )
-            logging.debug("@@@ paths=%s, genomes=%s" % (genome_paths, genomes))
+            logging.debug("@@@autogenJB2 paths=%s, genomes=%s" % (genome_paths, genomes))
             assref_name = jc.process_genomes(genomes[0])
             if not default_session_data.get(assref_name, None):
                 default_session_data[assref_name] = {
@@ -90,7 +90,6 @@ if __name__ == "__main__":
                     },
                 }
             listtracks = trackList
-            # foo.paf must have a foo_paf.fasta or fasta.gz to match
             tnames = [x[2] for x in listtracks]
             texts = [x[1] for x in listtracks]
             for i, track in enumerate(listtracks):
@@ -105,22 +104,20 @@ if __name__ == "__main__":
                 if tpath.startswith("http://") or tpath.startswith("https://"):
                     useuri = "yes"
                 if trext == "paf":
-                    refname = trackname + "_paf.fasta"
-                    refdat = [x[2] for x in listtracks if x[2] == refname]
-                    if not refdat:
+                    refdat = ["%s ~ %s" % (x[0],x[2]) for x in listtracks if x[1] in ["fasta", "fasta.gz"]]
+                    if len(refdat) == 0:
                         jc.logging.warn(
-                            "!! No reference file %s corresponding to paf file %s found. Not building - there must be a corresponding fasta for each paf"
-                            % (refname, trackname)
+                            "!! No reference file for %s found. Using main reference"
+                            % (refname)
                         )
-                        sys.exit(3)
+                        refdat = ["%s ~ %s" % (genomes[0].path, assref_name),]
                     else:
                         track_conf.update(
                             {
                                 "conf": {
                                     "options": {
                                         "paf": {
-                                            "genome": refdat,
-                                            "genome_label": trackname,
+                                            "genome": ",".join(refdat)
                                         }
                                     }
                                 }
