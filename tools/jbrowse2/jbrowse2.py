@@ -1301,6 +1301,7 @@ class JbrowseConnector(object):
          https://github.com/abretaud/tools-iuc/blob/jbrowse2/tools/jbrowse2/jbrowse2.py
         """
         # TODO using the default session for now, but check out session specs in the future https://github.com/GMOD/jbrowse-components/issues/2708
+        bpPerPx = 50 # this is tricky since browser window width is unknown - this seems a compromise that sort of works....
         track_types = {}
         with open(self.config_json_file, "r") as config_file:
             config_json = json.load(config_file)
@@ -1339,24 +1340,17 @@ class JbrowseConnector(object):
                             "displays": [style_data],
                         }
                     )
-            view_json = {
-                "type": "LinearGenomeView",
-                "offsetPx": 0,
-                "minimized": False,
-                "tracks": tracks_data,
-            }
             first = [x for x in self.ass_first_contigs if x[0] == gnome]
-            if len(first) > 0:
-                [gnome, refName, end] = first[0]
-                start = 0
-                end = int(end)
-                drdict = {
-                    "refName": refName,
-                    "start": start,
-                    "end": end,
+            drdict = {
                     "reversed": False,
                     "assemblyName": gnome,
                 }
+            if len(first) > 0:
+                [gnome, refName, end] = first[0]
+                drdict["refName"] = refName
+                drdict["start"] = 0
+                end = int(end)
+                drdict["end"] = end        
             else:
                 ddl = default_data.get("defaultLocation", None)
                 if ddl:
@@ -1368,12 +1362,20 @@ class JbrowseConnector(object):
                         if loc_match.group(2) > "":
                             drdict["start"] = int(loc_match.group(2).replace(",", ""))
                         if loc_match.group(3) > "":
-                            drdict["end"] = int(loc_match.group(3).replace(",", ""))
+                            end = int(loc_match.group(3).replace(",", ""))
+                            drdict["end"] = end
                     else:
                         logging.info(
                             "@@@ regexp could not match contig:start..end in the supplied location %s - please fix"
                             % ddl
                         )
+            view_json = {
+                "type": "LinearGenomeView",
+                "offsetPx": 0,
+                "bpPerPx" : bpPerPx,
+                "minimized": False,
+                "tracks": tracks_data
+            }
             if drdict.get("refName", None):
                 # TODO displayedRegions is not just zooming to the region, it hides the rest of the chromosome
                 view_json["displayedRegions"] = [
@@ -1389,7 +1391,6 @@ class JbrowseConnector(object):
         for key, value in mapped_chars.items():
             session_name = session_name.replace(value, key)
         session_json["name"] = session_name
-
         if "views" not in session_json:
             session_json["views"] = session_views
         else:
