@@ -518,7 +518,8 @@ class JbrowseConnector(object):
         """
         if useuri:
             faname = fapath
-            scontext = ssl.SSLContext(ssl.PROTOCOL_TLS)
+            scontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            scontext.check_hostname = False
             scontext.verify_mode = ssl.VerifyMode.CERT_NONE
             with urllib.request.urlopen(url=faname + ".fai", context=scontext) as f:
                 fl = f.readline()
@@ -939,7 +940,7 @@ class JbrowseConnector(object):
             url = data
         else:
             url = tId
-            dest = "%s/%s" % (self.outdir, url)
+            dest = os.path.join(self.outdir, url)
             cmd = "bgzip -c %s  > %s" % (data, dest)
             self.subprocess_popen(cmd)
             cmd = ["tabix", "-f", "-p", "vcf", dest]
@@ -1052,7 +1053,7 @@ class JbrowseConnector(object):
             url = data
         else:
             url = tId + ".gz"
-            dest = "%s/%s" % (self.outdir, url)
+            dest = os.path.join(self.outdir, url)
             self._sort_bed(data, dest)
         trackDict = {
             "type": "FeatureTrack",
@@ -1099,7 +1100,7 @@ class JbrowseConnector(object):
         url = tId
         useuri = data.startswith("http://") or data.startswith("https://")
         if not useuri:
-            dest = "%s/%s" % (self.outdir, url)
+            dest = os.path.join(self.outdir, url)
             self.symlink_or_copy(os.path.realpath(data), dest)
             nrow = self.getNrow(dest)
         else:
@@ -1301,7 +1302,7 @@ class JbrowseConnector(object):
          https://github.com/abretaud/tools-iuc/blob/jbrowse2/tools/jbrowse2/jbrowse2.py
         """
         # TODO using the default session for now, but check out session specs in the future https://github.com/GMOD/jbrowse-components/issues/2708
-        bpPerPx = 50 # this is tricky since browser window width is unknown - this seems a compromise that sort of works....
+        bpPerPx = 20 # tricky since browser window width is unknown - this seems a compromise that sort of works....
         track_types = {}
         with open(self.config_json_file, "r") as config_file:
             config_json = json.load(config_file)
@@ -1362,8 +1363,7 @@ class JbrowseConnector(object):
                         if loc_match.group(2) > "":
                             drdict["start"] = int(loc_match.group(2).replace(",", ""))
                         if loc_match.group(3) > "":
-                            end = int(loc_match.group(3).replace(",", ""))
-                            drdict["end"] = end
+                            drdict["end"] = int(loc_match.group(3).replace(",", ""))
                     else:
                         logging.info(
                             "@@@ regexp could not match contig:start..end in the supplied location %s - please fix"
@@ -1528,8 +1528,13 @@ class JbrowseConnector(object):
             json.dump(self.config_json, config_file, indent=2)
 
     def clone_jbrowse(self, realclone=False):
-        """Clone a JBrowse directory into a destination directory. This also works in Biocontainer testing now
-        Leave as True between version updates on temporary tools - requires manual conda trigger :(
+        """
+            Clone a JBrowse directory into a destination directory.
+
+            `realclone=true` will use the `jbrowse create` command.
+            To allow running on internet-less compute and for reproducibility
+            use frozen code with `realclone=false
+
         """
         dest = self.outdir
         if realclone:

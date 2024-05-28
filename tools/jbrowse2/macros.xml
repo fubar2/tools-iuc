@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <macros>
-    <token name="@TOOL_VERSION@">2.11.0</token>
+    <token name="@TOOL_VERSION@">2.11.1</token>
     <xml name = "edamInc">
         <edam_topics>
             <edam_topic>topic_3307</edam_topic>
@@ -16,7 +16,7 @@
             <requirement type="package" version="@TOOL_VERSION@">jbrowse2</requirement>
             <requirement type="package" version="1.81">biopython</requirement>
             <requirement type="package" version="0.7.1">bcbio-gff</requirement>
-            <requirement type="package" version="1.19">samtools</requirement>
+            <requirement type="package" version="1.20">samtools</requirement>
             <requirement type="package" version="6.0.1">pyyaml</requirement>
             <requirement type="package" version="1.11">tabix</requirement>
             <requirement type="package" version="4.6.0">findutils</requirement>
@@ -548,9 +548,9 @@ maintained by Ross Lazarus and Bjoern Gruening until the IUC complete their own.
     <xml name="input_conditional" token_label="Track Data" token_format="data">
         <conditional name="useuri">
             <param name="insource" type="select" label="Define track data as a history file or an internet URI"
-                help="A public URI implies that all the associated tabix files are also in place. They are created for history files">
+                help="A public URI implies that all the tabix index files are also available. An internet connection and an accessible URI will always be needed for display.">
                 <option value="history" selected="true">Track data from a history file</option>
-                <option value="uri" >Tabix data URI - index files must be available at corresponding URI</option>
+                <option value="uri" >Tabix data URI - all index files must be available at corresponding URIs</option>
             </param>
             <when value="history">
                 <param label="@LABEL@" format="@FORMAT@" name="annotation" multiple="True" optional="true" type="data" />
@@ -570,7 +570,7 @@ maintained by Ross Lazarus and Bjoern Gruening until the IUC complete their own.
     <xml name="pafref_conditional" token_label="Track Data" token_format="data">
         <conditional name="pafuseuri">
             <param name="insource" type="select" label="PAF reference data from a history file or an internet URI?"
-                help="Multiple references can be used for mashmap PAF. A URI source requires all the associated tabix index files to be in place.">
+                help="Multiple references can be used for mashmap PAF. A URI source requires a working internet connection to all the associated tabix index files">
                 <option value="history" selected="true">PAF reference comparison genome from a history file</option>
                 <option value="uri">PAF reference comparison genome tabix .gz URI with index files at the corresponding URIs</option>
             </param>
