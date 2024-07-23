@@ -16,6 +16,7 @@ import argparse
 import copy
 import os
 import sys
+from multiprocessing import Process, Queue, freeze_support
 from pathlib import Path
 
 import numpy as np
@@ -70,12 +71,16 @@ class asciihist:
             if self.str_tag:
                 self.str_tag = "%s " % self.str_tag
             else:
-                str_tag = ""
+                self.str_tag = ""
             if self.scale_output is not None:
                 scaled_counts = counts.astype(float) / counts.sum() * self.scale_output
             else:
                 scaled_counts = counts
-            footerbar =  "{:s}{:s} |{:s} |".format(self.str_tag, "-" * 12, "-" * 12,)
+            footerbar = "{:s}{:s} |{:s} |".format(
+                self.str_tag,
+                "-" * 12,
+                "-" * 12,
+            )
             if self.minmax is not None:
                 ret.append(
                     "Trimmed to range (%s - %s)"
@@ -92,7 +97,7 @@ class asciihist:
             ret.append(footerbar)
             ret.append("{:s}{:>12s} |{:>12,d} |".format(self.str_tag, "N=", total))
             ret.append(footerbar)
-            ret.append('')
+            ret.append("")
         else:
             ret = []
         if not self.generate_only:
@@ -105,6 +110,7 @@ class asciihist:
 class findOut:
 
     def __init__(self, args):
+        self.reshead = "bigwig\tcontig\tn\tmean\tstd\tmin\tmax\tqtop\tqbot"
         self.bwnames = args.bigwig
         self.bwlabels = args.bigwiglabels
         self.bedwin = args.minwin
@@ -116,19 +122,20 @@ class findOut:
         self.bedwin = args.minwin
         self.qhi = args.qhi
         self.qlo = None
+        self.NUMTASK = args.threads
         if args.qlo:
             try:
                 f = float(args.qlo)
                 self.qlo = f
-            except Exception as e:
-                print('qlo not provided')
+            except Exception:
+                print("qlo not provided")
         nbw = len(args.bigwig)
         nlab = len(args.bigwiglabels)
         if nlab < nbw:
             self.bwlabels += ["Nolabel"] * (nbw - nlab)
         self.makeBed()
 
-    def processVals(self, bw, isTop):
+    def processVals(self, bw, bwtop, bwbot, isTop):
         """
         idea from http://gregoryzynda.com/python/numpy/contiguous/interval/2019/11/29/contiguous-regions.html
         Fast segmentation into regions by taking np.diff on the boolean array of over (under) cutpoint indicators in bwex.
@@ -137,9 +144,9 @@ class findOut:
         Magical. Fast. Could do the same for means or medians over windows for sparse bigwigs like repeat regions.
         """
         if isTop:
-            bwex = np.r_[False, bw >= self.bwtop, False]  # extend with 0s
+            bwex = np.r_[False, bw >= bwtop, False]  # extend with 0s
         else:
-            bwex = np.r_[False, bw <= self.bwbot, False]
+            bwex = np.r_[False, bw <= bwbot, False]
         bwexd = np.diff(bwex)
         bwexdnz = bwexd.nonzero()[0]
         bwregions = np.reshape(bwexdnz, (-1, 2))
@@ -155,7 +162,7 @@ class findOut:
             bedf.write("\n".join(beds))
             bedf.write("\n")
 
-    def makeTableRow(self, bw, bwlabel, chr):
+    def makeTableRow(self, bw, bwlabel, chr, bwtop, bwbot):
         """
         called for every contig, but messy inline
         """
@@ -174,23 +181,97 @@ class findOut:
             bwmax,
         )
         if self.qhi is not None:
-            row += "\t%.2f" % self.bwtop
+            row += "\t%.2f" % bwtop
         else:
             row += "\tnoqhi"
         if self.qlo is not None:
-            row += "\t%.2f" % self.bwbot
+            row += "\t%.2f" % bwbot
         else:
             row += "\tnoqlo"
         return row
 
+    def oneChrom(self, bw, chr, bwlabel, tableoutfile):
+        """
+        make parallel
+        """
+        bw = bw[~np.isnan(bw)]  # some have NaN if parts of a contig not covered
+        restab = []
+        bedlo = []
+        bedhi = []
+        first_few = None
+        values, counts = np.unique(bw, return_counts=True)
+        nvalues = len(values)
+        if nvalues <= 20:
+            histo = "\n".join(
+                [
+                    "%s: %f occurs %d times" % (chr, values[x], counts[x])
+                    for x in range(len(values))
+                ]
+            )
+        else:
+            last10 = range(nvalues - 10, nvalues)
+            first_few = ["%.2f\t%d" % (values[x], counts[x]) for x in range(10)]
+            first_few += ["%.2f\t%d" % (values[x], counts[x]) for x in last10]
+            first_few.insert(0, "First/Last 10 value counts\nValue\tCount")
+            ha = asciihist(data=bw, bins=20, str_tag=chr)
+            histo = ha.draw()
+            histo = "\n".join(first_few) + "\nHistogram of bigwig values\n" + histo
+        if self.qhi is not None:
+            bwtop = np.quantile(bw, self.qhi)
+            bwbot = None
+            bwhi = self.processVals(bw, bwtop, bwbot, isTop=True)
+            for seg in bwhi:
+                seglen = seg[1] - seg[0]
+                if seglen >= self.bedwin:
+                    score = np.sum(bw[seg[0]:seg[1]]) / float(seglen)
+                    bedhi.append(
+                        (
+                            chr,
+                            seg[0],
+                            seg[1],
+                            "%s_%d" % (bwlabel, score),
+                            score,
+                        )
+                    )
+        if self.qlo is not None:
+            bwbot = np.quantile(bw, self.qlo)
+            bwlo = self.processVals(bw, bwtop, bwbot, isTop=False)
+            for seg in bwlo:
+                if seg[1] - seg[0] >= self.bedwin:
+                    score = -1 * np.sum(bw[seg[0]:seg[1]]) / float(seglen)
+                    bedlo.append(
+                        (
+                            chr,
+                            seg[0],
+                            seg[1],
+                            "%s_%d" % (bwlabel, score),
+                            score,
+                        )
+                    )
+        if tableoutfile:
+            row = self.makeTableRow(bw, bwlabel, chr, bwtop, bwbot)
+            resheadl = self.reshead.split("\t")
+            rowl = row.split()
+            desc = ["%s\t%s" % (resheadl[x], rowl[x]) for x in range(len(rowl))]
+            desc.insert(0, "Descriptive measures")
+            descn = "\n".join(desc)
+            restab.append(copy.copy(descn))
+            restab.append(histo)
+        return (restab, bedlo, bedhi)
+
+    def worker(self, input, output):
+        for args in iter(input.get, 'STOP'):
+            result = self.oneChrom(args[0], args[1], args[2], args[3])
+            output.put(result)
+
     def makeBed(self):
+        task_queue = Queue()
+        done_queue = Queue()
         bedhi = []
         bedlo = []
         bwlabels = self.bwlabels
         bwnames = self.bwnames
-        reshead =  "bigwig\tcontig\tn\tmean\tstd\tmin\tmax\tqtop\tqbot"
-        if self.tableoutfile:
-            restab = [reshead, ]
+        restab = []
         for i, bwname in enumerate(bwnames):
             bwlabel = bwlabels[i].replace(" ", "")
             fakepath = "in%d.bw" % i
@@ -201,63 +282,20 @@ class findOut:
             bwf = pybigtools.open(fakepath)
             chrlist = bwf.chroms()
             chrs = list(chrlist.keys())
-            for chr in chrs:
-                first_few = None
-                bw = bwf.values(chr)
-                values, counts = np.unique(bw, return_counts=True)
-                nvalues = len(values)
-                if nvalues <= 20:
-                    histo = '\n'.join(['%s: %f occurs %d times' % (chr, values[x], counts[x]) for x in range(len(values))])
-                else:
-                    last10 = range(nvalues-10, nvalues)
-                    first_few = ['%.2f\t%d' % (values[x],counts[x]) for x in range(10)]
-                    first_few += ['%.2f\t%d' % (values[x],counts[x]) for x in last10]
-                    first_few.insert(0,'First/Last 10 value counts\nValue\tCount')
-                    ha = asciihist(data=bw, bins=20, str_tag=chr)
-                    histo = ha.draw()
-                    histo = '\n'.join(first_few) + '\nHistogram of bigwig values\n' + histo
-                bw = bw[~np.isnan(bw)]  # some have NaN if parts of a contig not covered
-                if self.qhi is not None:
-                    self.bwtop = np.quantile(bw, self.qhi)
-                    bwhi = self.processVals(bw, isTop=True)
-                    for j, seg in enumerate(bwhi):
-                        seglen = seg[1] - seg[0]
-                        if seglen >= self.bedwin:
-                            score = np.sum(bw[seg[0]:seg[1]])/float(seglen)
-                            bedhi.append(
-                                (
-                                    chr,
-                                    seg[0],
-                                    seg[1],
-                                    "%s_%d" % (bwlabel, score),
-                                    score,
-                                )
-                            )
-                if self.qlo is not None:
-                    self.bwbot = np.quantile(bw, self.qlo)
-                    bwlo = self.processVals(bw, isTop=False)
-                    for j, seg in enumerate(bwlo):
-                        if seg[1] - seg[0] >= self.bedwin:
-                            score = -1 * np.sum(bw[seg[0]:seg[1]])/float(seglen)
-                            bedlo.append(
-                                (
-                                    chr,
-                                    seg[0],
-                                    seg[1],
-                                    "%s_%d" % (bwlabel, score),
-                                    score,
-                                )
-                            )
-                if self.tableoutfile:
-                    row = self.makeTableRow(bw, bwlabel, chr)
-                    restab.append(copy.copy(row))
-                    restab.append(histo)
-                resheadl = reshead.split('\t')
-                rowl = row.split()
-                desc = ['%s\t%s' % (resheadl[x], rowl[x]) for x in range(len(rowl))]
-                desc.insert(0, 'Descriptive measures')
-                descn = '\n'.join(desc)
-                print('\n'.join((descn, '', histo)))
+            tasks = [(bwf.values(x), x, bwlabel, self.tableoutfile) for x in chrs]
+            for task in tasks:
+                task_queue.put(task)
+            for i in range(self.NUMTASK):
+                Process(target=self.worker, args=(task_queue, done_queue)).start()
+            for i in range(len(tasks)):
+                print('task',i)
+                (arestab, abedlo, abedhi) = done_queue.get()
+                bedlo += abedlo
+                bedhi += abedhi
+                restab += arestab
+        # Tell child processes to stop
+        for i in range(self.NUMTASK):
+            task_queue.put('STOP')                 
         if os.path.isfile(fakepath):
             os.remove(fakepath)
         if self.tableoutfile:
@@ -286,8 +324,10 @@ class findOut:
 
 
 if __name__ == "__main__":
+    freeze_support()
     parser = argparse.ArgumentParser()
     a = parser.add_argument
+    a("--threads", default=4, type=int)
     a("-m", "--minwin", default=10, type=int)
     a("-l", "--qlo", default=None)
     a("-i", "--qhi", default=None, type=float)
