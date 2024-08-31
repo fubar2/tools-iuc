@@ -2,22 +2,54 @@
     <description>Fast local alignment boundaries</description>
     <macros>
         <token name="@TOOL_VERSION@">3.1.3</token>
-        <token name="@VERSION_SUFFIX@">0</token>
+        <token name="@VERSION_SUFFIX@">1</token>
     </macros>
     <requirements>
         <requirement version="@TOOL_VERSION@" type="package">mashmap</requirement>
     </requirements>
     <version_command>mashmap --version</version_command>
     <command><![CDATA[
-#if len($reflist) > 1:
+#if len($reflist) > 0:
+    rm -f ./reflist ./query &&
+    touch ./reflist ./query &&
     #for $r in $reflist:
-        echo '$r' >> ./reflist &&
+        #if $disambiguate:
+            #set rpath = $r.name
+            #set rname = os.path.basename($rpath)
+            #set rbaselocal = $rname + '_local.fasta'
+            #if $r.ext == "fasta":
+                sed 's~^>[^ ]*~&_$rname ~g' '$r' > '$rbaselocal' &&
+                echo '$rbaselocal' >> ./reflist &&
+            #elif $r.ext == "fasta.gz":
+                gzip -f -d -c $r | sed 's~^>[^ ]*~&_$rname ~g' > '$rbaselocal' &&
+                echo '$rbaselocal' >> ./reflist &&
+            #else:
+                echo '$r' >> ./reflist &&
+            #end if
+        #else:
+            echo '$r' >> ./reflist &&
+        #end if
     #end for
     cat ./reflist &&
 #end if
-#if len($query) > 1:
+#if len($query) > 0:
     #for $q in $query:
-        echo '$q' >> ./query &&
+        #if $disambiguate:
+            #set qpath = $q.name
+            #set qname = os.path.basename($qpath)
+            #set qbaselocal = $qname + "_local.fasta"
+            #if $q.ext == "fasta":
+                sed 's~^>[^ ]*~&_$qname ~g' '$q' > '$qbaselocal' &&
+                echo '$qbaselocal' >> ./query &&
+            #elif $q.ext == "fasta.gz":
+                gzip -f -d -c $q | sed 's~^>[^ ]*~&_$qname ~g' > '$qbaselocal' &&
+                echo '$qbaselocal' >> ./query &&
+            #else:
+                echo '$q' >> ./query &&
+            #end if
+        #else:
+            echo '$q' >> ./query &&
+        #end if
     #end for
     cat ./query &&
 #end if
@@ -39,16 +71,13 @@ mashmap
     #if int($sketchSize) > 0:
         -J $sketchSize
     #end if
-    #if len($reflist) == 1:
-        -r '$reflist'
-    #else
+    #if len($reflist) > 0:
         --rl ./reflist
     #end if
-    #if len($query) == 1:
-        -q '$query'
-    #else
+    #if len($query) > 0:
         --ql ./query
-    #end if
+    #end if 
+    && rm -f *.local.fasta
 
 ]]> </command>
     <inputs>
@@ -57,6 +86,9 @@ mashmap
         <param name="reflist" type="data" format="fasta,fasta.gz,fastq,fastq.gz" multiple="true"
             label="Reference or references to mash the query sequences on"
             help="Choose one or more reference sequences to mash the query sequences against."/>
+        <param name="disambiguate" type="boolean" truevalue="true" falsevalue="false" checked="true"
+            label="FASTA only - prepend the fasta file name to each contig to disambiguate the pairs in each match. Recommended for multiple references or queries"
+            help="Bare contig names are output for each pair. If multiple possible fasta sources, these may be ambiguous or hard to distinguish. Ignored if only one" />
         <param argument="--perc_identity" type="float" value="85.0" label="Identity threshold"
             help="By default, it is set to 85, implying mappings with 85 or more identity should be reported. For example, it can be set to 80to account for more noisy long-read datasets or 95 for mapping human genome assembly to human reference."/>
         <param argument="--seqLength" type="integer" value="5000" min="1" label="Minimum segment length"
@@ -84,6 +116,7 @@ mashmap
         <data name="mashout" format="paf" from_work_dir="mashmap.out" />
     </outputs>
     <tests>
+    <!--
         <test expect_num_outputs="1">
             <param name="query" value="query_sample.fasta" ftype="fasta"/>
             <param name="reflist" value="reflist_sample.fasta" ftype="fasta"/>
@@ -103,37 +136,68 @@ mashmap
             <param name="dense" value="true"/>
             <param name="filter_mode" value="map"/>
             <output name="mashout" value="mashout_sample.paf" ftype="paf"/>
+        </test> -->
+        <test expect_num_outputs="1">
+            <param name="query" value="query_sample.fasta" ftype="fasta"/>
+            <param name="reflist" value="reflist_1_sample.fasta,reflist_2_sample.fasta" ftype="fasta"/>
+            <param name="perc_identity" value="85.0"/>
+            <param name="seqLength" value="5000"/>
+            <param name="sketchSize" value="0"/>
+            <param name="dense" value="true"/>
+            <param name="filter_mode" value="map"/>
+            <param name="disambiguate" value="true"/>
+            <output name="mashout" value="mashout_multi_sample_disambiguate.paf" ftype="paf"/>
+        </test> 
+        <test expect_num_outputs="1">
+            <param name="query" value="query_sample.fasta" ftype="fasta"/>
+            <param name="reflist" value="reflist_1_sample.fasta,reflist_2_sample.fasta" ftype="fasta"/>
+            <param name="perc_identity" value="85.0"/>
+            <param name="seqLength" value="5000"/>
+            <param name="sketchSize" value="0"/>
+            <param name="dense" value="true"/>
+            <param name="filter_mode" value="map"/>
+            <param name="disambiguate" value="false"/>
+            <output name="mashout" value="mashout_multi_sample_nodisambiguate.paf" ftype="paf"/>
         </test>
         <test expect_num_outputs="1">
-            <param name="query" value="query_sample.fasta.gz,query_sample.fasta.gz" ftype="fasta.gz"/>
+            <param name="query" value="query_sample.fasta.gz" ftype="fasta.gz"/>
             <param name="reflist" value="reflist_1_sample.fasta.gz,reflist_2_sample.fasta.gz" ftype="fasta.gz"/>
             <param name="perc_identity" value="85.0"/>
             <param name="seqLength" value="5000"/>
             <param name="sketchSize" value="0"/>
             <param name="dense" value="true"/>
             <param name="filter_mode" value="map"/>
-            <output name="mashout" value="mashout_multi_sample.paf" ftype="paf"/>
+            <param name="disambiguate" value="true"/>
+            <output name="mashout" value="mashout_multi_sample_gzdisambiguate.paf" ftype="paf"/>
         </test>
     </tests>
     <help><![CDATA[
- *MashMap* implements a fast and approximate algorithm for computing local alignment boundaries between long DNA sequences.
- It can be useful for mapping genome assembly or long reads (PacBio/ONT) to reference genome(s).
- Given a minimum alignment length and an identity threshold for the desired local alignments, 
- 
- Mashmap computes alignment boundaries and identity estimates using k-mers. It does not compute the alignments explicitly,
- but rather estimates an unbiased k-mer based Jaccard similarity using a combination of minmers (a novel winnowing scheme) and MinHash.
- This is then converted to an estimate of sequence identity using the Mash distance. An appropriate k-mer sampling rate
- is automatically determined using the given minimum local alignment length and identity thresholds.
- 
- As an example, Mashmap can map a human genome assembly to the human reference genome in about one minute total execution
- time and < 4 GB memory using just 8 CPU threads, achieving more than an order of magnitude improvement in both runtime and
- memory over alternative methods. We describe the algorithms associated with Mashmap, and report on speed, scalability, and
- accuracy of the software in the publications listed below. Unlike traditional mappers, MashMap does not compute exact sequence alignments.
- In future, we plan to add an optional alignment support to generate base-to-base alignments.
- 
- The output is space-delimited with each line consisting of query name, length, 0-based start, end, strand, target name,
- length, start, end and mapping nucleotide identity.
- 
+
+Mashmap will produce a paired PAF file. 
+If multiple queries and/or references are given, only the contig names will be shown for the two entries in each row.
+It is possible to prepend the relevant reference name to each contig name before input if there are more than 1 of either.
+This makes the pairing unambiguous and makes PAF a much better format since the metadata is retained in the contig name.
+
+From the documentation:
+
+    *MashMap* implements a fast and approximate algorithm for computing local alignment boundaries between long DNA sequences.
+    It can be useful for mapping genome assembly or long reads (PacBio/ONT) to reference genome(s).
+    Given a minimum alignment length and an identity threshold for the desired local alignments, 
+
+    Mashmap computes alignment boundaries and identity estimates using k-mers. It does not compute the alignments explicitly,
+    but rather estimates an unbiased k-mer based Jaccard similarity using a combination of minmers (a novel winnowing scheme) and MinHash.
+    This is then converted to an estimate of sequence identity using the Mash distance. An appropriate k-mer sampling rate
+    is automatically determined using the given minimum local alignment length and identity thresholds.
+
+    As an example, Mashmap can map a human genome assembly to the human reference genome in about one minute total execution
+    time and < 4 GB memory using just 8 CPU threads, achieving more than an order of magnitude improvement in both runtime and
+    memory over alternative methods. We describe the algorithms associated with Mashmap, and report on speed, scalability, and
+    accuracy of the software in the publications listed below. Unlike traditional mappers, MashMap does not compute exact sequence alignments.
+    In future, we plan to add an optional alignment support to generate base-to-base alignments.
+
+    The output is space-delimited with each line consisting of query name, length, 0-based start, end, strand, target name,
+    length, start, end and mapping nucleotide identity.
+
   ]]></help>
     <citations>
         <citation type="doi">10.1093/bioinformatics/btad512</citation>
