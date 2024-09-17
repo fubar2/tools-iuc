@@ -3,8 +3,8 @@
     <macros>
         <import>macros.xml</import>
     </macros>
-    <expand macro='xrefs'/>
     <expand macro='edam_ontology' />
+    <expand macro='xrefs'/>
     <expand macro='requirements' />
     <version_command>repeatmasker --version</version_command>
     <command detect_errors="exit_code"><![CDATA[
@@ -12,6 +12,9 @@
     if [ -z "\$RM_PATH" ] ; then echo "Failed to find RepeatMasker in PATH (\$PATH)" >&2 ; exit 1 ; fi &&
 
     if [ -z "\$RM_LIB_PATH" ] ; then RM_LIB_PATH=\$(dirname \$RM_PATH)/../share/RepeatMasker/Libraries ; fi &&
+    ### This is needed to stop repeatmasker from (over-)writing there. It will fallback to writing to and deleting ./home/.RepeatMaskerCache/CONS-Dfam_3.7
+    chmod -Rf u-w "\$RM_LIB_PATH" &&
+    ### See note at end https://github.com/Dfam-consortium/RepeatMasker/blob/master/INSTALL about cached TE files - not good to write these to the conda install.
     #if $repeat_source.source_type == "dfam_up":
       mkdir lib/ &&
       ln -s '${repeat_source.dfam_lib}' lib/RepeatMaskerLib.h5 &&
@@ -119,7 +122,7 @@
       </when>
       <when value="library">
         <param name="repeat_lib" type="data" format="fasta" label="Custom library of repeats" />
-        <param name="cutoff" type="integer" argument="-cutoff" value="225" label="Cutoff score for masking repeats" />
+        <param type="integer" argument="-cutoff" value="225" label="Cutoff score for masking repeats" />
       </when>
     </conditional>
     <param type="boolean" argument="-gff" truevalue="-gff" falsevalue="" label="Output annotation of repeats in GFF format" checked="false" />
