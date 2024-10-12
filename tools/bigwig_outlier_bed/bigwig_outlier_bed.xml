@@ -189,7 +189,10 @@
 
  **How is it controlled?**
 
- The cut points are calculated using a user supplied quantile, from each chromosome's bigwig value distribution. 
+ Zero is treated as a special value for finding regions without any coverage - these can be long stretches of N in VGP assemblies for example. Use the 
+ *Make 1 bed output for regions with contiguous zero values only* selection to get a bed with all the regions > minwin in length.
+
+ Otherwise, cut points are calculated using a user supplied quantile, from each chromosome's bigwig value distribution. 
  The defaults are 0.99 and 0.01 and the default *minwin* is 10.  
  The probability of 10 values at or below the 1st percentile purely by chance is about 0.01**10, so false positives should be
  rare, even in a 3GB genome.  
