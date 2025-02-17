@@ -1,7 +1,7 @@
 ##fileformat=VCFv4.2
-##source=Sniffles2_2.5
-##command="/home/ross/miniconda3/envs/__sniffles@2.5.2/bin/sniffles -t 1 -i input.bam -v /tmp/tmpqwecq14c/job_working_directory/000/10/outputs/dataset_0e92fd8e-42f6-4ba5-a5f3-5ec578798305.dat --allow-overwrite --minsupport auto --max-splits-kb 0.1 --minsvlen 50 --mapq 20 --min-alignment-length 100 --cluster-binsize 100 --cluster-r 2.5 --mosaic"
-##fileDate="2024/11/13 10:05:00"
+##source=Sniffles2_2.6.0
+##command="/home/ross/venv/bin/sniffles -t 1 -i input.bam -v /tmp/tmpudvtcsdb/job_working_directory/000/10/outputs/dataset_00c1dc62-58cd-4f18-9e27-8d6d352d309a.dat --allow-overwrite --minsupport auto --max-splits-kb 0.1 --minsvlen 50 --mapq 20 --min-alignment-length 100 --cluster-binsize 100 --cluster-r 2.5 --mosaic"
+##fileDate="2025/02/17 10:36:54"
 ##contig=<ID=1,length=249250621>
 ##contig=<ID=2,length=243199373>
 ##contig=<ID=3,length=198022430>
@@ -129,6 +129,7 @@
 ##INFO=<ID=CHR2,Number=1,Type=String,Description="Mate chromsome for BND SVs">
 ##INFO=<ID=SUPPORT,Number=1,Type=Integer,Description="Number of reads supporting the structural variation">
 ##INFO=<ID=SUPPORT_INLINE,Number=1,Type=Integer,Description="Number of reads supporting an INS/DEL SV (non-split events only)">
+##INFO=<ID=SUPPORT_SA,Number=1,Type=Integer,Description="Number of reads supporting a DEL SV through supplementary alignments (split events)">
 ##INFO=<ID=SUPPORT_LONG,Number=1,Type=Integer,Description="Number of soft-clipped reads putatively supporting the long insertion SV">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="End position of structural variation">
 ##INFO=<ID=STDEV_POS,Number=1,Type=Float,Description="Standard deviation of structural variation start position">
